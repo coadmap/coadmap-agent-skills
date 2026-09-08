@@ -1,0 +1,16 @@
+{
+  "name": "coadmap-agent-skills",
+  "description": "Coadmap を使う開発チーム向けの AI コーディングエージェント用 skills / plugins。",
+  "owner": {
+    "name": "simula-labs",
+    "url": "https://github.com/simula-labs"
+  },
+  "plugins": [
+    {
+      "name": "coadmap-task-workflow",
+      "description": "Coadmap タスクの着手〜PR〜レビュー〜DONE〜後片付けのライフサイクルを徹底する。",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

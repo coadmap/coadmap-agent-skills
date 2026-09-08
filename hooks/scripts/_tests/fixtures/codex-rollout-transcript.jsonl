@@ -1,0 +1,4 @@
+{"timestamp":"2026-08-13T07:00:00.000Z","type":"session_meta","payload":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","cwd":"/repo","originator":"codex_cli_rs","cli_version":"0.20.0"}}
+{"timestamp":"2026-08-13T07:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"CMDEV-10660 に対応して"}]}}
+{"timestamp":"2026-08-13T07:00:09.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"了解しました"}]}}
+{"timestamp":"2026-08-13T07:00:09.100Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":12345,"output_tokens":678,"cached_input_tokens":900}}}}
