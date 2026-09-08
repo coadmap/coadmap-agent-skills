@@ -46,9 +46,8 @@ log() {
 # --- discover_coadmap_creds ---------------------------------------------------
 # Coadmap の他の hook 群と同じ探索ロジック。
 # 同じ環境変数名 (COADMAP_API_TOKEN / COADMAP_API_URL) ・同じ探索順を使う
-# （新しい規約を作らない）。Claude Code の MCP 設定 (`~/.claude.json` /
-# `~/.claude/settings.json`) から coadmap-mcp の認証情報を取り出し、
-# env が未設定の場合のみ補う。
+# （新しい規約を作らない）。Claude Code の MCP 設定 (`~/.claude.json`) から
+# Coadmap MCP の認証情報を取り出し、env が未設定の場合のみ補う。
 discover_coadmap_creds() {
   if [[ -n "${COADMAP_API_TOKEN:-}" && -n "${COADMAP_API_URL:-}" ]]; then
     return 0
@@ -57,42 +56,41 @@ discover_coadmap_creds() {
   # サーバー名は利用者が自由に付けるので固定名では探さない。user スコープと project スコープの
   # mcpServers を全部なめて、名前か url に coadmap を含むものを候補にする。
   local cfg name entry token mcp_url be_url
-  for cfg in "$HOME/.claude.json"; do
-    [[ -f "$cfg" ]] || continue
-    while IFS= read -r entry; do
-      [[ -z "$entry" || "$entry" == "null" ]] && continue
-      name="$(printf '%s' "$entry" | jq -r '.name // empty' 2>/dev/null)"
+  cfg="$HOME/.claude.json"
+  [[ -f "$cfg" ]] || return 0
+  while IFS= read -r entry; do
+    [[ -z "$entry" || "$entry" == "null" ]] && continue
+    name="$(printf '%s' "$entry" | jq -r '.name // empty' 2>/dev/null)"
 
-      token="$(printf '%s' "$entry" \
-        | jq -r '.headers.Authorization // .env.COADMAP_API_TOKEN // empty' 2>/dev/null \
-        | sed 's/^Bearer //')"
-      [[ -z "$token" || "$token" == "null" ]] && continue
+    token="$(printf '%s' "$entry" \
+      | jq -r '.headers.Authorization // .env.COADMAP_API_TOKEN // empty' 2>/dev/null \
+      | sed 's/^Bearer //')"
+    [[ -z "$token" || "$token" == "null" ]] && continue
 
-      mcp_url="$(printf '%s' "$entry" \
-        | jq -r '.url // .env.COADMAP_API_URL // empty' 2>/dev/null)"
+    mcp_url="$(printf '%s' "$entry" \
+      | jq -r '.url // .env.COADMAP_API_URL // empty' 2>/dev/null)"
 
-      case "$mcp_url" in
-        *mcp-dev.coadmap.net*) be_url="https://api-dev.coadmap.com" ;;
-        *mcp.coadmap.net*)     be_url="https://api.coadmap.com" ;;
-        http*)                 be_url="$mcp_url" ;;
-        *)
-          case "$name" in
-            *dev*) be_url="https://api-dev.coadmap.com" ;;
-            *)     be_url="https://api.coadmap.com" ;;
-          esac
-          ;;
-      esac
+    case "$mcp_url" in
+      *mcp-dev.coadmap.net*) be_url="https://api-dev.coadmap.com" ;;
+      *mcp.coadmap.net*)     be_url="https://api.coadmap.com" ;;
+      http*)                 be_url="$mcp_url" ;;
+      *)
+        case "$name" in
+          *dev*) be_url="https://api-dev.coadmap.com" ;;
+          *)     be_url="https://api.coadmap.com" ;;
+        esac
+        ;;
+    esac
 
-      [[ -z "${COADMAP_API_TOKEN:-}" ]] && export COADMAP_API_TOKEN="$token"
-      [[ -z "${COADMAP_API_URL:-}" ]] && export COADMAP_API_URL="$be_url"
-      return 0
-    done < <(jq -c '
-      [ (.mcpServers // {}), ((.projects // {}) | .[]? | .mcpServers // {}) ]
-      | map(to_entries[]) | .[]
-      | select((.key | test("coadmap"; "i")) or ((.value.url // "") | test("coadmap"; "i")))
-      | .value + {name: .key}
-    ' "$cfg" 2>/dev/null || true)
-  done
+    [[ -z "${COADMAP_API_TOKEN:-}" ]] && export COADMAP_API_TOKEN="$token"
+    [[ -z "${COADMAP_API_URL:-}" ]] && export COADMAP_API_URL="$be_url"
+    return 0
+  done < <(jq -c '
+    [ (.mcpServers // {}), ((.projects // {}) | .[]? | .mcpServers // {}) ]
+    | map(to_entries[]) | .[]
+    | select((.key | test("coadmap"; "i")) or ((.value.url // "") | test("coadmap"; "i")))
+    | .value + {name: .key}
+  ' "$cfg" 2>/dev/null || true)
 }
 
 # --- 0. jq が無ければ黙って終了 ---------------------------------------------

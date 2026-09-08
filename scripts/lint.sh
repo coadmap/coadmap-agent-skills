@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck と manifest JSON の構文検証。CI とローカルで同じものを回す。
+# 静的検査(shellcheck、manifest JSON、hook 配線、Markdown リンク)。CI とローカルで同じものを回す。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if command -v shellcheck >/dev/null 2>&1; then
