@@ -19,8 +19,17 @@ session="$(printf '%s' "$session" | tr -c 'A-Za-z0-9._-' '_')"
 marker="${COADMAP_RUN_DIR:-$HOME/.coadmap/run}/${session}.injected"
 [[ -f "$marker" ]] || exit 0
 
-# タスクURL判定: coadmap.com ドメインの /tasks/ リンク
-has_task_link() { grep -Eq 'https?://[^[:space:])"'"'"']*coadmap\.com/([^[:space:])"'"'"']*/)?tasks/' ; }
+# タスクURL判定: coadmap.com(サブドメイン可)の /tasks/<id> リンク。
+# ホスト境界を見ないと evilcoadmap.com が通り、ID を要求しないと /tasks/ だけの URL が通る。
+has_task_link() { grep -Eq 'https?://([A-Za-z0-9-]+\.)*coadmap\.com/([^[:space:])"'"'"']*/)?tasks/[A-Za-z0-9=_%~+-]+' ; }
+
+# 静的に追えない構文(バックティック、eval、sh -c 等の文字列実行)の中に gh pr create が
+# 書かれているか。見つけたら判定不能なので、リンクが無い限りブロックする(fail-close)。
+has_opaque_pr_create() {
+  local re_wrapper='(^|[^A-Za-z0-9_])(eval|(ba|z|da|k)?sh[[:space:]]+(-[A-Za-z]*c))([^A-Za-z0-9_]|$)'
+  { [[ "$cmd" == *'`'* ]] || printf '%s' "$cmd" | grep -Eq "$re_wrapper"; } || return 1
+  printf '%s' "$cmd" | grep -Eq '(^|[^A-Za-z0-9_/.-])gh([[:space:]]+-[^[:space:]]+)*[[:space:]]+pr[[:space:]]+create([^A-Za-z0-9_-]|$)'
+}
 
 # コマンドを実行せず、quote-aware に shell word へ分割する。
 # kind: 1=unquoted で始まる word、0=quoted で始まる word、-1=制御演算子。
@@ -66,7 +75,7 @@ tokenize_command() {
         elif [[ "$char" == "\\" && $((i + 1)) -lt ${#source} ]]; then
           next="${source:i+1:1}"
           case "$next" in
-            '"'|'$'|'`'|'\\') word+="$next"; i=$((i + 1)) ;;
+            '"'|'$'|'`'|'\') word+="$next"; i=$((i + 1)) ;;
             $'\n') i=$((i + 1)) ;;
             *) word+="\\" ;;
           esac
@@ -98,7 +107,7 @@ tokenize_command() {
               fi
               [[ "$char" == "'" ]] && state=single || state=double
               ;;
-            '\\')
+            '\')
               if [[ $((i + 1)) -lt ${#source} ]]; then
                 next="${source:i+1:1}"
                 if [[ "$next" == $'\n' ]]; then
@@ -132,13 +141,17 @@ tokenize_command() {
   append_shell_word
 }
 
+# usage: find_pr_create [start-index]
+# start-index 以降で最初に実行される gh pr create を探す。1 コマンド列に複数あっても
+# 呼び出し側が pr_args_index から再開して全件検査できるようにする。
 find_pr_create() {
-  local at_command_start=1 skip_redirect_target=0 prefix_bypass=0 i word kind command_name
+  local start="${1:-0}"
+  local at_command_start=1 skip_redirect_target=0 prefix_bypass=0 i j word kind command_name
   pr_args_index=-1
   task_bypass=0
-  tokenize_command "$cmd"
+  [[ $start -eq 0 ]] && tokenize_command "$cmd"
 
-  for ((i = 0; i < ${#shell_words[@]}; i++)); do
+  for ((i = start; i < ${#shell_words[@]}; i++)); do
     word="${shell_words[$i]}"
     kind="${shell_word_kinds[$i]}"
 
@@ -175,10 +188,21 @@ find_pr_create() {
         ;;
     esac
 
+    # gh のグローバルオプション(--repo owner/name, -R x, --hostname h 等)は pr の前に置ける。
+    # 値を取るものは次の word ごと読み飛ばす。
+    j=$((i + 1))
+    if [[ "$command_name" == "gh" ]]; then
+      while [[ ${shell_word_kinds[$j]:--1} -ne -1 && "${shell_words[$j]:-}" == -* ]]; do
+        case "${shell_words[$j]}" in
+          --repo|-R|--hostname) j=$((j + 2)) ;;
+          *) j=$((j + 1)) ;;
+        esac
+      done
+    fi
     if [[ "$command_name" == "gh" \
-      && ${shell_word_kinds[$((i + 1))]:--1} -ne -1 && "${shell_words[$((i + 1))]:-}" == "pr" \
-      && ${shell_word_kinds[$((i + 2))]:--1} -ne -1 && "${shell_words[$((i + 2))]:-}" == "create" ]]; then
-      pr_args_index=$((i + 3))
+      && ${shell_word_kinds[$j]:--1} -ne -1 && "${shell_words[$j]:-}" == "pr" \
+      && ${shell_word_kinds[$((j + 1))]:--1} -ne -1 && "${shell_words[$((j + 1))]:-}" == "create" ]]; then
+      pr_args_index=$((j + 2))
       task_bypass=$prefix_bypass
       return 0
     fi
@@ -246,35 +270,49 @@ inspect_pr_options() {
   done
 }
 
-# 実行される gh pr create が無ければ対象外。引用符内・コメント内の文字列は無視する。
-find_pr_create || exit 0
-
-# 明示バイパスは gh の直前に置かれた shell assignment だけを認める。
-[[ $task_bypass -eq 1 ]] && exit 0
-
-inspect_pr_options
-if [[ $body_seen -eq 1 ]] && printf '%s' "$body" | has_task_link; then
-  exit 0
-fi
-
-# --body-file / -F は読み取れる実パスだけを厳格検査する。hook は実行前に
-# 動くため、シェル変数や stdin は eval せず、理由付き警告で gh に委ねる。
-if [[ $body_file_seen -eq 1 ]]; then
-  if [[ "$body_file" == "-" || ! -f "$body_file" || ! -r "$body_file" ]]; then
-    printf >&2 '[coadmap-task-workflow] 警告: PR 本文ファイルを読み取れないため、ブロックせず続行します: %q\n' "$body_file"
-    exit 0
-  fi
-
-  has_task_link < "$body_file" && exit 0
-fi
-
-cat >&2 <<'EOF'
+block() {
+  cat >&2 <<'EOF'
 [coadmap-task-workflow] PR body に Coadmap タスクリンクがありません。
 このセッションは Coadmap タスク作業中です。PR body の先頭1行目に必ずタスクリンクを入れて再実行してください:
 
   [[<TASK_ID>] <TASK_TITLE>](<https://coadmap.com/.../tasks/... のタスクURL>)
 
 タスクURLが未取得なら coadmap-task-workflow skill の references/00-orientation.md に従って MCP で取得してください。
-この PR が Coadmap タスクと無関係な場合のみ、コマンド先頭に COADMAP_PR_NO_TASK=1 を付けてバイパスできます。
+この PR が Coadmap タスクと無関係な場合のみ、コマンド先頭に COADMAP_PR_NO_TASK=1 を付けてバイパスできます
+(例: COADMAP_PR_NO_TASK=1 gh pr create ...。export では効きません)。
 EOF
-exit 2
+  exit 2
+}
+
+# 静的に追えない構文の中の gh pr create は、コマンド全体にタスクリンクが無い限りブロックする。
+if has_opaque_pr_create && ! printf '%s' "$cmd" | has_task_link; then
+  printf >&2 '[coadmap-task-workflow] バックティック / eval / sh -c 内の gh pr create は検査できないため、タスクリンクが確認できる形で実行してください。\n'
+  block
+fi
+
+# 実行される gh pr create を全件検査する。引用符内・コメント内の文字列は無視する。
+start=0
+while find_pr_create "$start"; do
+  start=$pr_args_index
+
+  # 明示バイパスは gh の直前に置かれた shell assignment だけを認める。
+  [[ $task_bypass -eq 1 ]] && continue
+
+  inspect_pr_options
+  if [[ $body_seen -eq 1 ]] && printf '%s' "$body" | has_task_link; then
+    continue
+  fi
+
+  # --body-file / -F は読み取れる実パスだけを厳格検査する。hook は実行前に
+  # 動くため、シェル変数や stdin は eval せず、理由付き警告で gh に委ねる。
+  if [[ $body_file_seen -eq 1 ]]; then
+    if [[ "$body_file" == "-" || ! -f "$body_file" || ! -r "$body_file" ]]; then
+      printf >&2 '[coadmap-task-workflow] 警告: PR 本文ファイルを読み取れないため、ブロックせず続行します: %q\n' "$body_file"
+      continue
+    fi
+    has_task_link < "$body_file" && continue
+  fi
+
+  block
+done
+exit 0

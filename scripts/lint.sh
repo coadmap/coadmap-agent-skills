@@ -18,7 +18,7 @@ done
 # hooks.json が指すスクリプトと、hook スクリプトが辿る skill 側スクリプトが実在すること。
 # ディレクトリ改名で黙って壊れるのを CI で止める。
 for f in "$ROOT"/hooks/*.json; do
-  jq -r '.. | .command? // empty' "$f" | grep -oE '\$\{CLAUDE_PLUGIN_ROOT\}/[^" ]+' | sed 's#${CLAUDE_PLUGIN_ROOT}#'"$ROOT"'#' \
+  jq -r '.. | .command? // empty' "$f" | grep -oE '\$\{(CLAUDE_)?PLUGIN_ROOT\}/[^" ]+' | sed -E 's#\$\{(CLAUDE_)?PLUGIN_ROOT\}#'"$ROOT"'#' \
     | while IFS= read -r p; do [[ -x "$p" ]] || { echo "hook target missing or not executable: $p"; exit 1; }; done
 done
 [[ -x "$ROOT/skills/coadmap-task-workflow/scripts/extract-task-id.sh" ]] || { echo "extract-task-id.sh missing"; exit 1; }

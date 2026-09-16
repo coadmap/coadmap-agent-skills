@@ -145,6 +145,30 @@ rc=0; run s1 'gh pr create --body "COADMAP_PR_NO_TASK=1"' || rc=$?
 # バイパス指定 → 通過
 run s1 'COADMAP_PR_NO_TASK=1 gh pr create --body "unrelated"' \
   && echo "ok: バイパス通過" || { echo "NG: バイパス無効"; fail=1; }
+# 迂回経路の回帰: 静的に追えない構文はリンクが無ければブロック(fail-close)
+expect_blocked "バックティック内の gh pr create はブロック" '`gh pr create --body "no link"`'
+expect_blocked "eval 経由の gh pr create はブロック" 'eval "gh pr create --body \"no link\""'
+expect_blocked "bash -c 経由の gh pr create はブロック" 'bash -c "gh pr create --body \"no link\""'
+run s1 'bash -c "gh pr create --body \"[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)\""' \
+  && echo "ok: bash -c 内でもリンクがあれば通過" || { echo "NG: bash -c 内のリンクを誤ブロック"; fail=1; }
+# 行継続: `gh pr \` + 改行 + `create` は 1 コマンドとして検査し、逆に正しい行継続を誤爆しない
+expect_blocked "行継続で分割した gh pr create はブロック" $'gh pr \\\ncreate --body "no link"'
+run s1 $'gh pr create \\\n  --body "[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)"' \
+  && echo "ok: 正しい行継続は通過" || { echo "NG: 正しい行継続を誤ブロック"; fail=1; }
+# gh のグローバルオプションが pr の前にあっても検査する
+expect_blocked "--repo 付き gh pr create はブロック" 'gh --repo acme/widget pr create --body "no link"'
+expect_blocked "-R 付き gh pr create はブロック" 'gh -R acme/widget pr create --body "no link"'
+# 1 コマンド列に複数の gh pr create があれば全件検査する
+expect_blocked "2 つ目のリンク無し gh pr create はブロック" \
+  'gh pr create --body "https://coadmap.com/ws/tasks/a1" && gh pr create --body "no link"'
+# URL 判定: ホスト境界と ID 非空
+expect_blocked "偽ドメインの URL はブロック" 'gh pr create --body "https://evilcoadmap.com/ws/tasks/x"'
+expect_blocked "ID 無しの /tasks/ URL はブロック" 'gh pr create --body "https://coadmap.com/tasks/"'
+run s1 'gh pr create --body "https://app.coadmap.com/ws/tasks/abc"' \
+  && echo "ok: サブドメインの URL は通過" || { echo "NG: サブドメイン URL を誤ブロック"; fail=1; }
+# export では効かない(実装は gh 直前の代入語だけ認める)ことを固定する
+rc=0; run s1 'export COADMAP_PR_NO_TASK=1; gh pr create --body "no link"' || rc=$?
+[[ $rc -eq 2 ]] && echo "ok: export 形式のバイパスは無効" || { echo "NG: export 形式が通過 rc=$rc"; fail=1; }
 # gh pr create 以外 → 対象外
 run s1 'gh pr view 12 --json body' \
   && echo "ok: 対象外コマンドは通過" || { echo "NG: 対象外コマンドをブロック"; fail=1; }

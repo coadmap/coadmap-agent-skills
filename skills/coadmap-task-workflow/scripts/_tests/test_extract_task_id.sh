@@ -7,7 +7,7 @@ check() { # desc input expected
   local got; got="$(printf '%s' "$2" | bash "$SUT" || true)"
   if [[ "$got" == "$3" ]]; then echo "ok: $1"; else echo "NG: $1 (got='$got' want='$3')"; fail=1; fi
 }
-check "displayId大文字"        "[CMDEV-9618] Yataチャットで…"                 "CMDEV-9618"
+check "displayId大文字"        "[CMDEV-9618] ログイン画面の…"                 "CMDEV-9618"
 check "displayId小文字namespace" "development_coadmap-36 を直す"               "development_coadmap-36"
 check "task URL"               "https://coadmap.com/ws/tasks/VGFzazoxMjM= 対応" "https://coadmap.com/ws/tasks/VGFzazoxMjM="
 check "URL優先(両方含む)"        "CMDEV-1 https://coadmap.com/a/tasks/X="        "https://coadmap.com/a/tasks/X="

@@ -3,11 +3,21 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # 利用者の主戦場は macOS(bash 3.2 / BSD find・tr)なので、Linux との差を CI で押さえる
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y shellcheck jq
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y shellcheck jq
+      - if: runner.os == 'macOS'
+        run: brew install shellcheck jq
       - run: bash scripts/lint.sh
       - run: bash scripts/test.sh

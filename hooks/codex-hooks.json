@@ -5,8 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/detect-task-id.sh\"",
-            "timeout": 5
+            "command": "bash \"${PLUGIN_ROOT}/hooks/scripts/detect-task-id.sh\""
           }
         ]
       }
@@ -17,8 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-pr-task-link.sh\"",
-            "timeout": 5
+            "command": "bash \"${PLUGIN_ROOT}/hooks/scripts/guard-pr-task-link.sh\""
           }
         ]
       }
@@ -28,8 +26,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/report-ai-usage.sh\"",
-            "timeout": 5
+            "command": "\"${PLUGIN_ROOT}/hooks/scripts/report-ai-usage.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/scripts/report-ai-usage.sh\" --event SessionEnd"
           }
         ]
       }

@@ -59,7 +59,8 @@ Coadmap タスクの着手から完了・後片付けまでのライフサイク
 ## scripts(すべて `<skill dir>/scripts/` 配下)
 
 - `extract-task-id.sh` — stdin(プロンプト / ブランチ名)からタスク識別子を抽出
-- `read-config.sh [dir]` — 利用者リポの `.coadmap/workflow.json` を親方向に探索して出力(無ければ `{}`)
-- `resolve-identity.sh` / `save-identity.sh` — 本人アカウントの記憶(`~/.coadmap/task-flow.json`)
+- `read-config.sh [dir]` — 利用者リポの `.coadmap/workflow.json` を親方向に探索して出力(無ければ `{}`)。`--path` でファイルパスを出す
+- `save-pipeline-roles.sh <ws> <DOING> <IN_REVIEW> <DONE>` — パイプラインロールを `.coadmap/workflow.json` に記録(ロック付き)
+- `resolve-identity.sh` / `save-identity.sh` — 本人アカウントの記憶(`~/.coadmap/task-flow.json`、ロック付き)
 - `alloc-ports.sh <branch> <base>` — 決定的ポート割当(ロック付き、`~/.coadmap/port-registry.json`)
 - `release-port.sh <branch>` — ポート確保の解放(クリーンアップ時)
