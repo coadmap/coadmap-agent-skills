@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034,SC2010 # 社内版 v0.4.0 と同期して取り込むファイルなので、差分を最小にするため未使用変数と ls|grep は許容する
 # report-ai-usage (_report-ai-usage-impl.sh) の統合テスト。
 # curl / security をフェイクバイナリに差し替え、HOME を一時ディレクトリに逃がして
 # 実ネットワーク・実 keychain・実 ~/.coadmap に一切触れずに検証する。

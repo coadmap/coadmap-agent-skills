@@ -17,7 +17,7 @@ fi
 acquire_lock "$CFG.lock"
 [[ -f "$CFG" ]] || echo '{}' > "$CFG"
 tmp="$(mktemp)"
-jq --arg ws "$ws" --arg doing "$doing" --arg review "$review" --arg done "$done_" \
-  '.pipelineRoles[$ws] = {DOING:$doing, IN_REVIEW:$review, DONE:$done}' "$CFG" > "$tmp"
+jq --arg ws "$ws" --arg doing "$doing" --arg review "$review" --arg finished "$done_" \
+  '.pipelineRoles[$ws] = {DOING:$doing, IN_REVIEW:$review, DONE:$finished}' "$CFG" > "$tmp"
 mv "$tmp" "$CFG"
 printf '%s' "$CFG"
