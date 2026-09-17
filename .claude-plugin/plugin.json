@@ -1,0 +1,14 @@
+{
+  "name": "coadmap-task-workflow",
+  "version": "0.1.0",
+  "description": "Coadmap タスクの着手から PR・レビュー・CI・マージ準備・DONE・後片付けまでのライフサイクルを AI コーディングエージェントに徹底させる skill / hooks / agent。",
+  "author": {
+    "name": "simula-labs",
+    "url": "https://github.com/simula-labs"
+  },
+  "homepage": "https://github.com/simula-labs/coadmap-agent-skills",
+  "repository": "https://github.com/simula-labs/coadmap-agent-skills",
+  "license": "MIT",
+  "keywords": ["coadmap", "workflow", "tasks", "pull-requests", "worktree"],
+  "hooks": "./hooks/hooks.json"
+}

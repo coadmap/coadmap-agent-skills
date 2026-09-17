@@ -1,0 +1,40 @@
+{
+  "name": "coadmap-task-workflow",
+  "version": "0.1.0",
+  "description": "Coadmap タスクの着手から PR・レビュー・CI・マージ準備・DONE・後片付けまでのライフサイクルを AI コーディングエージェントに徹底させる skill / hooks。",
+  "author": {
+    "name": "simula-labs",
+    "url": "https://github.com/simula-labs"
+  },
+  "homepage": "https://github.com/simula-labs/coadmap-agent-skills",
+  "repository": "https://github.com/simula-labs/coadmap-agent-skills",
+  "license": "MIT",
+  "keywords": [
+    "coadmap",
+    "workflow",
+    "tasks",
+    "pull-requests",
+    "worktree"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/codex-hooks.json",
+  "interface": {
+    "displayName": "Coadmap Task Workflow",
+    "shortDescription": "Coadmap タスクの着手〜PR〜DONE のワークフロー",
+    "longDescription": "Coadmap MCP でタスク/プロジェクトのコンテキストを取得し、パイプライン移動・worktree 作成・意思決定のコメント記録・タスクリンク付き PR 作成・レビュー・CI 確認・マージ準備通知・DONE 移動とクリーンアップまでを一貫して進める。",
+    "developerName": "simula-labs",
+    "category": "Development",
+    "capabilities": [
+      "Skills",
+      "Lifecycle hooks",
+      "Workflow"
+    ],
+    "websiteURL": "https://github.com/simula-labs/coadmap-agent-skills",
+    "defaultPrompt": [
+      "CMDEV-1234 に着手して PR 作成まで進めて",
+      "このタスクの Coadmap コンテキストを取得して",
+      "タスク対応用の worktree を作って実装を始めて"
+    ],
+    "brandColor": "#7C3AED"
+  }
+}
