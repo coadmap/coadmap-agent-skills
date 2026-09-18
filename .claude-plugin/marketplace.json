@@ -2,8 +2,8 @@
   "name": "coadmap-agent-skills",
   "description": "Coadmap を使う開発チーム向けの AI コーディングエージェント用 skills / plugins。",
   "owner": {
-    "name": "simula-labs",
-    "url": "https://github.com/simula-labs"
+    "name": "coadmap",
+    "url": "https://github.com/coadmap"
   },
   "plugins": [
     {
