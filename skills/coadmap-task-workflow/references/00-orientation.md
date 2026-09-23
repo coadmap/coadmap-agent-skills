@@ -24,11 +24,15 @@ CFG="$(bash "<skill dir>/scripts/read-config.sh")"
 
 ## 3. タスク情報・プロジェクトコンテキストの取得(MCP)
 
-1. `get_coadmap_task_dependency(<タスク URL / displayId / [ns-NN] title / global ID>)` でタスク本体(タイトル・説明/ゴール・受け入れ条件・現在パイプライン・既存のアサイン/見積もり・所属 workspace など)を取得する。
+1. `get_coadmap_task_dependency(<タスク URL / displayId / [ns-NN] title / global ID>)` でタスク本体(タイトル・説明/ゴール・受け入れ条件・現在パイプライン・既存のアサイン/見積もり など)と、現在パイプラインの ID(`identity.workspacePipelineId`)を取得する。
    - Coadmap MCP のサーバーが複数ある場合は、この呼び出しで使うサーバーを決める(SKILL.md「MCP ツールの呼び方」)。
    - displayId しか無い場合もここで raw UUID / global ID とタスク URL(`taskUrl`)を得ておく(後段のコメント投稿・PR リンクで使う)。
    - ワークスペースのタスク一覧を取得して対象を探さない。一覧は大きく、ツール出力の上限を超えて途中で切れる。
-2. 1 で得た workspace について `get_coadmap_workspace_context(workspaceId)` で **pipelines / members / sprints / estimateValues / labels / epics / releases** を取得する。
+2. タスクが属する workspace を特定する。タスクの応答には workspaceId が無いので、パイプライン ID で突き合わせる:
+   - `get_coadmap_workspaces` で候補を列挙する(タスク URL `https://<host>/<namespace>/tasks/...` の namespace で絞ってよい)。
+   - 候補ごとに `get_coadmap_workspace_context(workspaceId)` を呼び、`pipelines` に `identity.workspacePipelineId` を含むものを対象 workspace とする。
+   - workspace のタイトルやタスク ID の接頭辞から推測しない。
+3. 対象 workspace の context(**pipelines / members / sprints / estimateValues / labels / epics / releases**)を以降のフェーズで使う。
 
 ## 4. 本人アカウントの解決(learn & remember)
 
