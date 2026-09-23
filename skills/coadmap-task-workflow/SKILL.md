@@ -10,7 +10,7 @@ Coadmap タスクの着手から完了・後片付けまでのライフサイク
 ## 発火条件
 
 - ユーザーがタスク ID(`CMDEV-9618` / `[ns-NN] title`)やタスク URL を渡して着手を依頼した時
-- `/coadmap-task` コマンド実行時(Claude Code)
+- `/coadmap-task` コマンドで起動された時(slash command を持つクライアント。例: Claude Code)
 
 ## パスの約束
 

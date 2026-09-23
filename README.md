@@ -2,7 +2,7 @@
 
 [Coadmap](https://coadmap.com) を使う開発チーム向けの、AI コーディングエージェント用 skills / plugin。
 
-現在は **`coadmap-task-workflow`** の 1 plugin を収録。Claude Code と Codex に対応。
+現在は **`coadmap-task-workflow`** の 1 plugin を収録。Claude Code と Codex に対応(クライアントごとの差分は [docs/clients/](docs/clients/README.md))。
 
 ## coadmap-task-workflow
 
@@ -15,7 +15,7 @@ Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)
 3. 使う全リポで **worktree 作成**(同一ブランチ名)+ Docker 利用時は **PORT 衝突回避**(ローカルで複数セッションを並行する場合向け。隔離されたサンドボックスではスキップ)
 4. 対話で確定した **意思決定・仕様詳細化をタスクコメントに記録**
 5. **タスクリンク付き PR** を作成し、タスクを **IN_REVIEW** へ移動
-6. 独立した立場での **レビュー → 指摘対応**(Claude Code は subagent、Codex は inline)
+6. 独立した立場での **レビュー → 指摘対応**(サブエージェントを使えるクライアントでは subagent、使えなければ inline)
 7. **CI ステータス確認**(`gh pr checks`)
 8. マージ準備が整ったら **ユーザーへ通知**(最終レビュー・マージは人間が実施)
 9. マージ後(ユーザー指示で)**DONE** へ移動 + 継続タスクが無ければ **コンテナ / worktree クリーンアップ**
@@ -24,18 +24,18 @@ Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)
 
 ### 構成要素
 
-| 種別 | 名前 | 役割 | Claude Code | Codex |
-|---|---|---|---|---|
-| skill | `coadmap-task-workflow` | ライフサイクル全体のオーケストレーター(references で段階的に読む) | ○ | ○ |
-| command | `/coadmap-task [TASK_ID\|URL]` | 明示的な着手エントリポイント | ○ | ×(タスク ID を含めて依頼する) |
-| agent | `coadmap-pr-reviewer` | PR の独立レビュー担当 | ○ | ×(skill が inline でレビュー) |
-| hook | UserPromptSubmit | プロンプトにタスク ID/URL を検出したら skill 利用を促す(セッション 1 回) | ○ | ○ |
-| hook | PreToolUse (Bash) | タスク作業中、Coadmap タスクリンクの無い `gh pr create` をブロック | ○ | ○ |
-| hook | SessionEnd / Stop | トークン使用量を Coadmap に自己申告(**既定 off**、後述) | ○ | ○ |
+| 種別 | 名前 | 役割 | 使えないクライアントでの代替 |
+|---|---|---|---|
+| skill | `coadmap-task-workflow` | ライフサイクル全体のオーケストレーター(references で段階的に読む) | - |
+| command | `/coadmap-task [TASK_ID\|URL]` | 明示的な着手エントリポイント | タスク ID を含めて依頼する |
+| agent | `coadmap-pr-reviewer` | PR の独立レビュー担当 | skill が inline でレビュー |
+| hook | UserPromptSubmit | プロンプトにタスク ID/URL を検出したら skill 利用を促す(セッション 1 回) | - |
+| hook | PreToolUse (Bash) | タスク作業中、Coadmap タスクリンクの無い `gh pr create` をブロック | skill が PR 作成後に body を読み戻して検証 |
+| hook | SessionEnd / Stop | トークン使用量を Coadmap に自己申告(**既定 off**、後述) | - |
 
 タスクと無関係な PR を作る場合は、**コマンド先頭に** `COADMAP_PR_NO_TASK=1 gh pr create ...` と付けてバイパスする(`export` では効かない)。
 
-差分の詳細は [docs/claude-vs-codex.md](docs/claude-vs-codex.md)。
+どのクライアントで何が使えるかは [docs/clients/README.md](docs/clients/README.md) の能力マトリクスを参照。
 
 ## 前提
 
@@ -44,54 +44,22 @@ Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)
 
 ### Coadmap MCP の接続
 
-Coadmap の設定画面で API キーを発行し、MCP サーバーとして登録する。エンドポイントと API キーの発行手順は Coadmap のドキュメントを参照。
-
-Claude Code:
-
-```bash
-claude mcp add --transport http --scope user \
-  coadmap-mcp https://mcp.coadmap.com/mcp \
-  --header "Authorization:Bearer <ApiKey>"
-```
-
-Codex(`~/.codex/config.toml`):
-
-```toml
-[mcp_servers.coadmap-mcp]
-url = "https://mcp.coadmap.com/mcp"
-http_headers = { "Authorization" = "Bearer <ApiKey>" }
-```
+Coadmap MCP(`https://mcp.coadmap.com/mcp`)をサーバーとして登録し、OAuth でログインする。クライアントごとの登録・ログイン方法は [Claude Code](docs/clients/claude-code.md#coadmap-mcp-の接続) / [Codex](docs/clients/codex.md#coadmap-mcp-の接続)。
 
 サーバー名は任意。skill はツール一覧から Coadmap MCP のツールを持つサーバーを探して使う。複数ある場合は名前ではなく、`get_coadmap_task_dependency` が返すタスク URL のホスト(URL 指定時はそのホスト、ID 指定時は `coadmap.com`)で 1 つに決める。
 
 ## インストール
 
-### Claude Code
+クライアントごとの手順は次を参照する。
 
-```
-/plugin marketplace add coadmap/coadmap-agent-skills
-/plugin install coadmap-task-workflow@coadmap-agent-skills
-```
+- [Claude Code](docs/clients/claude-code.md#インストール)
+- [Codex](docs/clients/codex.md#インストール)
 
-### Codex
-
-```
-codex plugin marketplace add coadmap/coadmap-agent-skills
-codex plugin add coadmap-task-workflow@coadmap-agent-skills
-```
-
-または対話セッションで `/plugins` を開き、マーケットプレイスから選ぶ。
-
-**インストール後、hooks を信頼するまで 4 つの hook はどれも動かない。** Codex は plugin の hook を実行前にレビューさせる仕組みで、未信頼の hook はセッション中に確認を出さず黙ってスキップされる。Codex デスクトップアプリでは plugin の詳細画面に「N 個のフックは実行前にレビューが必要です」と出るので、「見直し」で中身を確認するか「すべて信頼する」を選ぶ。CLI でも同様に信頼(レビュー)が済むまで hook は実行されない。
-
-- 信頼は hook ごとに `~/.codex/config.toml` の `[hooks.state]` に記録される。plugin の更新などで hook ファイルが変わると、再びレビューが必要になる。
-- 信頼しないままだと UserPromptSubmit の skill 誘導が出ず、PreToolUse の PR リンク検査も効かない。検査は UserPromptSubmit hook がマーカーを作ったセッションだけを対象にするため、エラーにもならず素通りする。
-
-Codex の既定のサンドボックス内では、`git push`(SSH の ssh-agent)や `gh`(macOS キーチェーンのトークン)が `Permission denied (publickey)` / `The token in default is invalid` などで失敗することがある。サンドボックス外では認証は正常なので再ログインは不要で、該当コマンドをサンドボックス外で実行する承認を出せばよい。
+クライアントによっては、インストールしただけでは hooks が動かず、別途信頼(レビュー)が必要になる。信頼しないままだと skill 誘導も PR リンク検査もエラーを出さずに素通りするので、各クライアントのページの手順を済ませておく。
 
 ### plugin 機構を使わない場合
 
-`skills/coadmap-task-workflow/` をそのまま `~/.claude/skills/`、`~/.codex/skills/`、またはリポの `.claude/skills/` / `.agents/skills/` にコピーすれば skill 単体で動く。skill 配下は自己完結しており、外へのリンクは無い。hooks / command / agent は付かないが、skill の手順だけでワークフローは回るように書いてある。
+`skills/coadmap-task-workflow/` をそのまま、クライアントが skill を読み込むディレクトリ(置き場は [docs/clients/](docs/clients/README.md#能力マトリクス) を参照)にコピーすれば skill 単体で動く。skill 配下は自己完結しており、外へのリンクは無い。hooks / command / agent は付かないが、skill の手順だけでワークフローは回るように書いてある。
 
 ## 使い方
 
@@ -103,6 +71,8 @@ CMDEV-1234 に着手して
 /coadmap-task https://coadmap.com/<ws>/tasks/<id>
 ```
 
+(2 つ目は slash command を持つクライアントのみ)
+
 skill がチェックリストを作り、Orientation から順に進める。初回は本人アカウントやワークスペースのパイプラインロールをヒアリングし、本人アカウントは `~/.coadmap/` に、パイプラインロールはリポの `.coadmap/workflow.json` に記憶して次回以降は聞かない。
 
 ## プロジェクト設定(任意)
@@ -113,7 +83,7 @@ skill がチェックリストを作り、Orientation から順に進める。�
 
 ## トークン使用量の自己申告(opt-in)
 
-セッション終了時と各ターン終了時に、そのセッションで消費したトークン量(入力・出力・キャッシュ作成・キャッシュ読み取りの**集計値のみ**)を Coadmap に自己申告する hook を同梱している。Coadmap 側で「標準 AI 以外の外部エージェントがどれだけ使われているか」を把握するためのもの。Claude Code の transcript と Codex の rollout log の両方を集計できる。
+セッション終了時と各ターン終了時に、そのセッションで消費したトークン量(入力・出力・キャッシュ作成・キャッシュ読み取りの**集計値のみ**)を Coadmap に自己申告する hook を同梱している。Coadmap 側で「標準 AI 以外の外部エージェントがどれだけ使われているか」を把握するためのもの。集計元はクライアントごとに異なる(Claude Code の transcript、Codex の rollout log など。[docs/clients/](docs/clients/README.md#能力マトリクス))。
 
 **plugin を入れただけでは何も送らない。** 送るには明示的に有効化する:
 
@@ -121,12 +91,7 @@ skill がチェックリストを作り、Orientation から順に進める。�
 export COADMAP_AI_USAGE_REPORT=1
 ```
 
-有効化した場合の接続先とトークンは、次の順で解決する。どれでも解決できなければ黙って何もしない。
-
-1. 環境変数 `COADMAP_API_TOKEN` + `COADMAP_API_URL`(両方必須。dev 環境など標準以外の接続先はこの方法だけ)
-2. Claude Code の MCP OAuth 資格情報(`mcp.coadmap.com` に接続しているサーバーのもの)
-3. Claude Code の MCP 設定に直書きされた `Authorization` ヘッダ
-4. Codex の `~/.codex/config.toml` の `http_headers.Authorization`
+有効化した場合の接続先とトークンは、まず環境変数 `COADMAP_API_TOKEN` + `COADMAP_API_URL`(両方必須。任意の接続先を指定できる)を見て、無ければクライアントの MCP 設定・資格情報から探す。クライアントごとの探索順は [docs/clients/README.md](docs/clients/README.md#トークン使用量の資格情報の解決順)。どれでも解決できなければ黙って何もしない。
 
 送られるもの: エージェント種別、最もトークンを消費したモデル名、各トークン数の集計値、セッション ID、分かる場合のみブランチ名から推定したタスク ID。
 送られないもの: 会話内容・プロンプト・コード差分・ファイル内容(transcript はローカルでトークン集計にのみ使い、本文は一切送らない)、API トークン等の秘匿情報。hook 入力は argv に載せず stdin で worker に渡すので、`ps` から応答本文が読めることもない。
@@ -138,7 +103,7 @@ bash scripts/test.sh   # skills / hooks の _tests を全実行
 bash scripts/lint.sh   # shellcheck + manifest JSON + hook 配線 + Markdown リンク検証
 ```
 
-CI は ubuntu と macOS の両方で回る。
+CI は ubuntu と macOS の両方で回る。skill やドキュメントを書くときの約束(クライアント固有の記述の置き場など)は [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## ライセンス
 
