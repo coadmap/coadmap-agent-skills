@@ -4,6 +4,8 @@
 
 現在は **`coadmap-task-workflow`** の 1 plugin を収録。Claude Code と Codex に対応。
 
+Codex plugin workflow E2E verification: CMDEV-11245.
+
 ## coadmap-task-workflow
 
 Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)を渡して着手するときに、**着手から完了・後片付けまでのライフサイクル**をエージェントに徹底させる。
