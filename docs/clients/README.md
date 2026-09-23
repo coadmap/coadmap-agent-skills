@@ -16,16 +16,16 @@ skill 本体(`skills/coadmap-task-workflow/`)はクライアント非依存の�
 | サブエージェント(PR レビュー担当) | `coadmap-pr-reviewer` agent を spawn する | plugin は agent を同梱しない。skill が `references/review-checklist.md` の観点で inline レビューする |
 | タスク管理ツール | TodoWrite | plan / update_plan。どちらも無ければ応答内のチェックリストで代替する |
 | hooks 設定ファイル + パス変数 | `hooks/hooks.json`、`${CLAUDE_PLUGIN_ROOT}` | `hooks/codex-hooks.json`、`${PLUGIN_ROOT}` |
-| hooks の信頼 | plugin のインストールで有効になる | 信頼(レビュー)するまで 4 つとも黙ってスキップされる([codex.md](codex.md#hooks-の信頼)) |
-| サンドボックスの影響(`git push` / `gh`) | 本 plugin としての既知事例は無い | 既定のサンドボックス内で認証エラーになることがある。サンドボックス外での実行を承認する([codex.md](codex.md#サンドボックスと-git-push--gh)) |
-| クライアント管理の worktree | セッション用 worktree を用意する実行形態がある | アプリがセッション用 worktree を用意する(detached HEAD、`codex/` prefix) |
+| hooks の信頼 | インストールで有効になる(信頼・レビューの手順なしで、次の新規セッションから UserPromptSubmit / PreToolUse の発火を確認済み)。plugin の変更は新しいセッションから反映される | 信頼(レビュー)するまで 4 つとも黙ってスキップされる([codex.md](codex.md#hooks-の信頼)) |
+| サンドボックスの影響(`git push` / `gh`) | デスクトップアプリの既定設定では、SSH の `git push` と `gh pr create` が追加の承認なしで成功した。サンドボックスを有効にした構成は未検証 | 既定のサンドボックス内で認証エラーになることがある。サンドボックス外での実行を承認する([codex.md](codex.md#サンドボックスと-git-push--gh)) |
+| クライアント管理の worktree | デスクトップアプリはセッションを `<repo>/.claude/worktrees/<name>` の worktree(ブランチ `claude/<name>`)で開始できる | アプリがセッション用 worktree を用意する(detached HEAD、`codex/` prefix) |
 | MCP の登録 | `claude mcp add`([claude-code.md](claude-code.md#coadmap-mcp-の接続)) | `~/.codex/config.toml` の `[mcp_servers.<name>]`([codex.md](codex.md#coadmap-mcp-の接続)) |
-| MCP ツール名の prefix | `mcp__<サーバー名>__<ツール名>` | サーバー名で名前空間が付く。実際の表記はセッションのツール一覧で確認する |
+| MCP ツール名の prefix | `mcp__<サーバー名>__<ツール名>` | `mcp__<サーバー名>__<ツール名>`。サーバー名のハイフンはアンダースコアに変わる(`coadmap-mcp` → `mcp__coadmap_mcp__get_coadmap_task_dependency`) |
 | トークン使用量の集計元 | transcript(`transcript_path` の JSONL) | rollout log |
 | トークン使用量の資格情報 | MCP OAuth 資格情報 → MCP 設定の `Authorization` ヘッダ | `~/.codex/config.toml` の `http_headers.Authorization` / `bearer_token_env_var` |
 | skill 単体コピーの置き場 | `~/.claude/skills/` / リポの `.claude/skills/` | `~/.codex/skills/` / リポの `.agents/skills/` |
 
-クライアント管理の worktree を使う場合も、タスクブランチはクライアント独自の prefix ではなく `<branchPrefix><TASK_ID>-<slug>` で `origin/<base>` から切る(`references/02-worktree-setup.md`)。
+クライアント管理の worktree を使う場合も、タスクブランチはクライアント独自の prefix(`claude/` / `codex/`)ではなく `<branchPrefix><TASK_ID>-<slug>` で `origin/<base>` から切る(`references/02-worktree-setup.md`)。
 
 ## hooks の配線
 
@@ -44,7 +44,7 @@ hook スクリプトのパスは Claude Code 側が `${CLAUDE_PLUGIN_ROOT}`、Co
 
 ## MCP の接続名
 
-Coadmap MCP のツール名は接続方法で prefix が変わる(`mcp__coadmap-mcp__...` など)。skill はツール名だけを書き、prefix はセッションのツール一覧から Coadmap MCP のツールを持つサーバーを探して補う。候補が複数あるときはサーバー名で選ばず、`get_coadmap_task_dependency` が返す `taskUrl` のホストで決める(SKILL.md「MCP ツールの呼び方」)。どのクライアントでも同じ扱い。
+Coadmap MCP のツール名は接続方法で prefix が変わる(`mcp__coadmap-mcp__...` / `mcp__coadmap_mcp__...` など)。skill はツール名だけを書き、prefix はセッションのツール一覧から Coadmap MCP のツールを持つサーバーを探して補う。候補が複数あるときはサーバー名で選ばず、`get_coadmap_task_dependency` が返す `taskUrl` のホストで決める(SKILL.md「MCP ツールの呼び方」)。どのクライアントでも同じ扱い。
 
 ## トークン使用量の資格情報の解決順
 

@@ -28,7 +28,7 @@ url = "https://mcp.coadmap.com/mcp"
 http_headers = { "Authorization" = "Bearer <ApiKey>" }
 ```
 
-サーバー名は任意(選び方は [README.md](README.md#mcp-の接続名))。
+サーバー名は任意(選び方は [README.md](README.md#mcp-の接続名))。ツールは `mcp__<サーバー名>__<ツール名>` の名前で見え、サーバー名のハイフンはアンダースコアに変わる(`coadmap-mcp` → `mcp__coadmap_mcp__get_coadmap_task_dependency`)。
 
 ## サンドボックスと `git push` / `gh`
 
@@ -39,7 +39,7 @@ Codex の既定のサンドボックス内では、`git push`(SSH の ssh-agent)
 - slash command は無い。`CMDEV-1234 に着手して` のようにタスク ID を含めて依頼する。
 - plugin は agent を同梱しないため、PR レビューは skill が `references/review-checklist.md` の観点で inline に行う。
 - チェックリストは plan / update_plan で項目化される。
-- Codex アプリはセッション用の worktree を detached HEAD で用意することがある。skill はそれをそのまま使うが、ブランチは `codex/` prefix ではなく `<branchPrefix><TASK_ID>-<slug>` で `origin/<base>` から切る。
+- Codex アプリはセッション用の worktree を detached HEAD で用意することがある。skill はそれをそのまま使うが、ブランチは `codex/` prefix ではなく `<branchPrefix><TASK_ID>-<slug>` で、`git fetch origin` した最新の `origin/<base>` から切る(`references/02-worktree-setup.md`)。
 - トークン使用量の自己申告(opt-in)は rollout log を集計し、資格情報は `~/.codex/config.toml` の `http_headers.Authorization`(または `bearer_token_env_var` が指す環境変数)から取る。Codex 自身の OAuth 資格情報は読まない。
 
 ## plugin 機構を使わない場合
