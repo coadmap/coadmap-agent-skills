@@ -62,7 +62,7 @@ url = "https://mcp.coadmap.com/mcp"
 http_headers = { "Authorization" = "Bearer <ApiKey>" }
 ```
 
-サーバー名は任意。skill はツール一覧から `coadmap` を含むサーバーを探して使う。
+サーバー名は任意。skill はツール一覧から Coadmap MCP のツールを持つサーバーを探して使う。複数ある場合は名前ではなく、`get_coadmap_task_dependency` が返すタスク URL のホスト(URL 指定時はそのホスト、ID 指定時は `coadmap.com`)で 1 つに決める。
 
 ## インストール
 

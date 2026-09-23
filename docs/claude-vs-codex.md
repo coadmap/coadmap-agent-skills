@@ -8,7 +8,7 @@ skill 本体(`skills/coadmap-task-workflow/`)はエージェント非依存の�
 | `/coadmap-task` command | あり | slash command 互換なし | `CMDEV-1234 に着手して` のようにタスク ID を含めて依頼する。UserPromptSubmit hook が skill 利用を促す |
 | `coadmap-pr-reviewer` agent | `Agent` ツールで spawn | subagent 機構なし | skill が `references/review-checklist.md` の観点で inline レビューする |
 | hooks | `hooks/hooks.json` | `hooks/codex-hooks.json` | 中身は同じ。パス変数が `CLAUDE_PLUGIN_ROOT` / `PLUGIN_ROOT` で違うだけ |
-| チェックリスト化 | TodoWrite | plan / update_plan | skill は「使えるタスク管理ツール」と書いてあり、どちらでもよい |
+| チェックリスト化 | TodoWrite | plan / update_plan | skill は「使えるタスク管理ツール」と書いてあり、どちらでもよい。無ければ応答内のチェックリストで代替する |
 | トークン使用量の自己申告 | SessionEnd + Stop | SessionEnd + Stop | Codex の rollout log も集計対象(上流 v0.4.0 相当) |
 
 ## hooks の配線
@@ -28,4 +28,4 @@ hook スクリプトのパスは Claude 側が `${CLAUDE_PLUGIN_ROOT}`、Codex �
 
 ## MCP の接続名
 
-Coadmap MCP のツール名は接続方法で prefix が変わる(`mcp__coadmap-mcp__...` など)。skill はツール名だけを書き、prefix はセッションのツール一覧から `coadmap` を含むサーバーを探して補う。Claude Code / Codex どちらでも同じ扱い。
+Coadmap MCP のツール名は接続方法で prefix が変わる(`mcp__coadmap-mcp__...` など)。skill はツール名だけを書き、prefix はセッションのツール一覧から Coadmap MCP のツールを持つサーバーを探して補う。候補が複数あるときはサーバー名で選ばず、`get_coadmap_task_dependency` が返す `taskUrl` のホストで決める(SKILL.md「MCP ツールの呼び方」)。Claude Code / Codex どちらでも同じ扱い。
