@@ -4,7 +4,7 @@
 
 このフェーズは「1 台のマシンで複数セッションを並行する」ローカル CLI 向けの手順。セッションごとに隔離されたサンドボックス(クラウド実行など)で動いている場合は、worktree もポート割当も不要なのでフェーズ全体をスキップし、その旨をユーザーに伝える。
 
-クライアントがセッション用の worktree を既に用意している場合(Codex アプリの管理 worktree で detached HEAD になっている等)は、新たに作らずそれを使ってよい。ただしタスクブランチは下記 2 の `<branchPrefix><TASK_ID>-<slug>` で切る(`git switch -c "$name"`)。クライアント独自の既定 prefix(`codex/` など)は使わない。ブランチ名はリポのブランチ規約や他リポとの対応付けに使われるため、クライアントに合わせると崩れる。
+クライアントがセッション用の worktree を既に用意している場合(Codex アプリの管理 worktree で detached HEAD になっている等)は、新たに作らずそれを使ってよい。ただしタスクブランチは下記 2 と同じく、`git fetch origin` のうえで `origin/$base` から `<branchPrefix><TASK_ID>-<slug>` で切る(`git switch -c "$name" --no-track "origin/$base"`。`base` の求め方も 2 と同じ)。用意された HEAD は古い base を指していることがあるため、そこから切らない。クライアント独自の既定 prefix(`codex/` など)は使わない。ブランチ名はリポのブランチ規約や他リポとの対応付けに使われるため、クライアントに合わせると崩れる。
 
 このフェーズで使う値は `.coadmap/workflow.json`(00 で読み込み済み)を正とする。キーの意味は [configuration.md](configuration.md) を参照。以下のコード例では、設定を `CFG` に読み込んである前提で書く:
 
