@@ -133,6 +133,8 @@ bash scripts/lint.sh   # shellcheck + manifest JSON + hook 配線 + Markdown リ
 
 CI は ubuntu と macOS の両方で回る。
 
+<!-- CMDEV-11224: plugin 版 coadmap-task-workflow 動作確認用のダミー追記(マージしない) -->
+
 ## ライセンス
 
 MIT
