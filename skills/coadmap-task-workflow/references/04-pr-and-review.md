@@ -4,6 +4,7 @@
 
 - 作成前に base を最新化(`git fetch` + 既定ブランチ取り込み)し、リポのコード品質ゲート(設定の `qualityGate[]`、無ければ `CLAUDE.md` / `AGENTS.md` に書かれた lint / type / test)を通す。
 - push 先と PR のタイトル / body を示し、**ユーザー承認後**に `git push` と `gh pr create` を実行する。
+- コミット・push の前に `git status` で差分を確かめ、`.coadmap/workflow.json` はステージしない。共有するかどうかはユーザーが別途決めることなので、頼まれた時だけタスクとは別にコミットする。
 - サンドボックス内で `git push` / `gh` が認証エラー(`Permission denied (publickey)` / `The token in default is invalid` など)で失敗したら、`gh auth login` などの再ログインを勧めない。サンドボックスが ssh-agent やキーチェーンへのアクセスを遮っているだけで、資格情報自体は正常なことが多い。そのコマンドをサンドボックス外で実行する承認をユーザーに求める。
 
 ### 1-1. body 組み立て(タスクリンクは body の1行目)

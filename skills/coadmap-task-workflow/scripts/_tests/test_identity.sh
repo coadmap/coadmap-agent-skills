@@ -21,6 +21,9 @@ out="$(bash "$RESOLVE" dev.example.com || echo "rc=$?")"
 bash "$SAVE" "dev.example.com:8443" "acc_dev" "you@example.com" "You"
 [[ "$(bash "$RESOLVE" "http://dev.example.com:8443/x")" == "acc_dev" && "$(bash "$RESOLVE" coadmap.com)" == "acc_123" ]] \
   && echo "ok: ホストごとに保持" || { echo "NG: ホスト別保持"; fail=1; }
+# userinfo と末尾の FQDN ドットは落とす(ポートは残す)
+[[ "$(bash "$RESOLVE" "https://user@COADMAP.com./ns/tasks/x")" == "acc_123" ]] && echo "ok: userinfo / 末尾ドットを無視" || { echo "NG: userinfo / 末尾ドット"; fail=1; }
+[[ "$(bash "$RESOLVE" "u:p@dev.example.com.:8443")" == "acc_dev" ]] && echo "ok: ポート付きでも末尾ドットを無視" || { echo "NG: ポート付き末尾ドット"; fail=1; }
 # 既存キーは保持する
 tmp="$(mktemp)"; jq '.other = 1' "$COADMAP_STATE_FILE" > "$tmp"; mv "$tmp" "$COADMAP_STATE_FILE"
 bash "$SAVE" coadmap.com "acc_456" "me@example.com" "Me"
