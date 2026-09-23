@@ -19,16 +19,18 @@ update_coadmap_task(
 )
 ```
 
-## 3. クリーンアップ(継続タスクが無ければ / ユーザー指示後)
+## 3. クリーンアップ(継続タスクが無く、かつユーザーが会話で指示した後)
 
 継続作業が無いことを確認し、**ユーザー承認のうえ**で後片付けする。各操作は破壊的なので実行前に確認する。02 で使った `wtdir`(設定の `worktreeDir`、既定 `.worktrees`)と同じ置き場を対象にする。
+
+削除してよいのは、**このセッションが 02 で自分で作った** worktree / ブランチだけ。クライアントが用意した worktree(detached HEAD のものを含む)や、クライアント自身のセッション用ブランチ(例: `claude/*`)はクライアントが管理しているので消さず、残っていることをユーザーに伝える。
 
 1. **Docker コンテナの停止/削除**(設定の `repos[].docker.down`。承認後)。
 2. **ポート確保の解放** — registry から該当ブランチのエントリを削除:
    ```bash
    bash "<skill dir>/scripts/release-port.sh" "<branch>"
    ```
-3. **worktree の削除** — 全リポで:
+3. **worktree の削除** — 02 で作った全リポの worktree を:
    ```bash
    for repo in "<repoA>" "<repoB>"; do
      git -C "$repo" worktree remove "$repo/$wtdir/<TASK_ID>"

@@ -28,16 +28,19 @@ CFG="$(bash "<skill dir>/scripts/read-config.sh")"
    - Coadmap MCP のサーバーが複数ある場合は、この呼び出しで使うサーバーを決める(SKILL.md「MCP ツールの呼び方」)。
    - displayId しか無い場合もここで raw UUID / global ID とタスク URL(`taskUrl`)を得ておく(後段のコメント投稿・PR リンクで使う)。
    - ワークスペースのタスク一覧を取得して対象を探さない。一覧は大きく、ツール出力の上限を超えて途中で切れる。
+   - コメントの多いタスクなどで応答が切り詰められたりファイルに保存されたりした場合は、保存された出力から必要なフィールドだけを `jq` などで抜き出す。欠けた値(`identity.workspacePipelineId`・`taskUrl`・各 ID)を推測で埋めない。
 2. タスクが属する workspace を特定する。タスクの応答には workspaceId が無いので、パイプライン ID で突き合わせる:
-   - `get_coadmap_workspaces` で候補を列挙する(タスク URL `https://<host>/<namespace>/tasks/...` の namespace で絞ってよい)。
-   - 候補ごとに `get_coadmap_workspace_context(workspaceId)` を呼び、`pipelines` に `identity.workspacePipelineId` を含むものを対象 workspace とする。
-   - workspace のタイトルやタスク ID の接頭辞から推測しない。
+   - `get_coadmap_workspaces` で候補を列挙し、タスク URL(無ければ 1 で得た `taskUrl`)`https://<host>/<namespace>/tasks/...` の namespace で必ず絞る。
+   - 絞った候補ごとに `get_coadmap_workspace_context(workspaceId)` を呼び、`pipelines` に `identity.workspacePipelineId` を含むものを対象 workspace とする。
+   - 該当が 0 個または 2 個以上ならユーザーに確認する。workspace のタイトルやタスク ID の接頭辞から推測しない。
 3. 対象 workspace の context(**pipelines / members / sprints / estimateValues / labels / epics / releases**)を以降のフェーズで使う。
 
 ## 4. 本人アカウントの解決(learn & remember)
 
+accountId は Coadmap の接続先ごとに別なので、タスク URL(無ければ `taskUrl`)のホストをキーにする:
+
 ```bash
-bash "<skill dir>/scripts/resolve-identity.sh"
+bash "<skill dir>/scripts/resolve-identity.sh" "<host>"   # 例: coadmap.com
 ```
 
 - **exit 0 + accountId 出力**: 記憶済み。その accountId をアサインに使う。
@@ -46,7 +49,7 @@ bash "<skill dir>/scripts/resolve-identity.sh"
   2. 3 で取得した workspace context の `members` から email 一致候補を提示し、ユーザーに本人アカウントを確認する。
   3. 確定したら保存して以後再利用する(ユーザー単位の記憶なので `~/.coadmap/task-flow.json` に入る):
      ```bash
-     bash "<skill dir>/scripts/save-identity.sh" "<accountId>" "<email>" "<displayName>"
+     bash "<skill dir>/scripts/save-identity.sh" "<host>" "<accountId>" "<email>" "<displayName>"
      ```
 
 ## 5. パイプラインロールの特定(DOING / IN_REVIEW / DONE)
