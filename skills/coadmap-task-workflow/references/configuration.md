@@ -12,6 +12,7 @@ skill が「リポ固有の作法」を推測しないで済むように、利�
   "worktreeDir": ".worktrees",
   "qualityGate": ["npm run lint", "npm run typecheck", "npm test"],
   "reviewGuidelines": "docs/review-guidelines.md",
+  "taskHosts": ["coadmap.example.co.jp"],
   "pipelineRoles": {
     "<workspaceId>": { "DOING": "<pipelineId>", "IN_REVIEW": "<pipelineId>", "DONE": "<pipelineId>" }
   },
@@ -46,6 +47,7 @@ skill が「リポ固有の作法」を推測しないで済むように、利�
 | `worktreeDir` | `.worktrees` | 各リポ直下からの worktree 置き場(相対パス) |
 | `qualityGate[]` | なし | PR 作成前と CI 失敗時にローカルで回すコマンド |
 | `reviewGuidelines` | なし | レビュー時に参照するリポ固有の観点ファイル |
+| `taskHosts[]` | なし(`coadmap.com` のみ) | `coadmap.com` 以外で Coadmap を使う場合のタスク URL のホスト(サブドメインも含む)。タスク URL の検出と、PR body のタスクリンク検査(hook・レビュー)が `coadmap.com` に加えて受け入れる。許可リストにしているのは、任意ホストの `/tasks/` を認めるとそれらしい URL を書くだけで検査を通せてしまうため |
 | `pipelineRoles[<workspaceId>]` | MCP から自動判別 | DOING / IN_REVIEW / DONE に対応する `pipelineId`。自動判別できない場合に `save-pipeline-roles.sh` が書く |
 | `repos[].name` | 必須 | 識別名 |
 | `repos[].path` | 必須 | ローカルパス。先頭の `~` は skill 側で `$HOME` に展開する(シェルは展開しない) |

@@ -10,7 +10,10 @@ session="$(printf '%s' "$input" | jq -r '.session_id // "unknown"' 2>/dev/null |
 session="$(printf '%s' "$session" | tr -c 'A-Za-z0-9._-' '_')"
 [[ -n "$session" ]] || session="unknown"
 [[ -n "$prompt" ]] || exit 0
-id="$(printf '%s' "$prompt" | bash "$EXTRACT" || true)"
+# taskHosts は利用者リポの設定なので、セッションの cwd から探させる。
+cwd="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null || true)"
+[[ -n "$cwd" && -d "$cwd" ]] || cwd="."
+id="$(cd "$cwd" && printf '%s' "$prompt" | bash "$EXTRACT" || true)"
 [[ -n "$id" ]] || exit 0
 # 共有 /tmp だと Linux で他ユーザーが先にディレクトリを作れてしまい書き込めなくなるので、
 # ユーザー専有の置き場にする。セッションごとに増えるマーカーはここで古いものを掃除する。

@@ -27,4 +27,29 @@ check "ブランチ小文字"         "feature/cmdev-9618-fix-login"            
 check "ブランチ大文字"         "feature/CMDEV-9618-fix-login"                       "CMDEV-9618"
 check "ブランチ underscore"    "feature/development_coadmap-36-x"                   "development_coadmap-36"
 check "ブランチ偽陽性なし"     "release/v2-1"                                       ""
+# 規格・文字コード・ハッシュ名は displayId と同じ形でも拾わない
+check "UTF-8偽陽性なし"        "UTF-8 で保存する"                                   ""
+check "SHA-256偽陽性なし"      "SHA-256 のハッシュ"                                 ""
+check "ISO-8601偽陽性なし"     "ISO-8601 形式の日付"                                ""
+check "RFC-7231偽陽性なし"     "RFC-7231 を参照"                                    ""
+check "規格名の後ろのIDは拾う" "UTF-8 の件で CMDEV-12 を直す"                       "CMDEV-12"
+check "ブランチ内の規格名なし" "docs/utf-8"                                         ""
+# タスクタイトル表記の角括弧付きなら小文字 namespace もそのまま拾う
+check "角括弧の小文字namespace" "[pypoo2-1] タイトル"                               "pypoo2-1"
+check "角括弧の小文字displayId" "[cmdev-9618] ログイン画面"                         "cmdev-9618"
+check "文中の小文字は拾わない" "cmdev-9618 の件"                                    ""
+# /tasks/ 直下の URL も拾い、ホスト境界と埋め込み URL は区別する
+check "tasks直下URL"           "https://coadmap.com/tasks/VGFzazoxMjM= を見て"      "https://coadmap.com/tasks/VGFzazoxMjM="
+check "偽ドメインは拾わない"   "https://evilcoadmap.com/x/tasks/1"                  ""
+check "埋め込みURLは拾わない"  "https://evil.example/?u=https://coadmap.com/ws/tasks/VGFzazoxMjM=" ""
+# taskHosts で許可したホストの URL も拾う(設定は cwd から探す)
+TMP="$(mktemp -d)"
+mkdir -p "$TMP/.coadmap"
+echo '{"taskHosts":["coadmap.example.co.jp"]}' > "$TMP/.coadmap/workflow.json"
+got="$(cd "$TMP" && printf '%s' "https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM= 対応" | bash "$SUT" || true)"
+[[ "$got" == "https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM=" ]] && echo "ok: taskHosts のURL" \
+  || { echo "NG: taskHosts のURL (got='$got')"; fail=1; }
+got="$(cd "$(dirname "$TMP")" && printf '%s' "https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM=" | bash "$SUT" || true)"
+[[ -z "$got" ]] && echo "ok: 未設定ホストのURLは拾わない" || { echo "NG: 未設定ホストのURL (got='$got')"; fail=1; }
+rm -rf "$TMP"
 exit $fail
