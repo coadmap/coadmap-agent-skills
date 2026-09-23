@@ -30,10 +30,12 @@ Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)
 | command | `/coadmap-task [TASK_ID\|URL]` | 明示的な着手エントリポイント | タスク ID を含めて依頼する |
 | agent | `coadmap-pr-reviewer` | PR の独立レビュー担当 | skill が inline でレビュー |
 | hook | UserPromptSubmit | プロンプトにタスク ID/URL を検出したら skill 利用を促す(セッション 1 回) | - |
-| hook | PreToolUse (Bash) | タスク作業中、Coadmap タスクリンクの無い `gh pr create` をブロック | skill が PR 作成後に body を読み戻して検証 |
+| hook | PreToolUse (Bash / MCP の `create_pull_request`) | タスク作業中、Coadmap タスクリンクの無い PR 作成(`gh pr create` / `gh pr new`、MCP の `*__create_pull_request`)をブロック | skill が PR 作成後に body を読み戻して検証 |
 | hook | SessionEnd / Stop | トークン使用量を Coadmap に自己申告(**既定 off**、後述) | - |
 
 タスクと無関係な PR を作る場合は、**コマンド先頭に** `COADMAP_PR_NO_TASK=1 gh pr create ...` と付けてバイパスする(`export` では効かない)。
+
+PR リンク検査の狙いはリンクの付け忘れで、意図的な回避(`eval` や `python -c`、`gh api` での作成、作成後に `gh pr edit` で本文を書き換える等)は防がない。静的に追えない書き方の中に `gh pr create` があればリンクを確認できない限りブロックするが、それも付け忘れを拾うための安全側の判定にすぎない。PR 作成後に skill が body を読み戻して確かめるのが二段目の検査になる。
 
 どのクライアントで何が使えるかは [docs/clients/README.md](docs/clients/README.md) の能力マトリクスを参照。
 
@@ -77,7 +79,7 @@ skill がチェックリストを作り、Orientation から順に進める。�
 
 ## プロジェクト設定(任意)
 
-作業リポの `.coadmap/workflow.json` に、既定ブランチ・worktree の置き場・ポート上書き env・post-setup コマンド・docker コマンド・品質ゲート・パイプラインロールを書いておくと、skill はそれを正として推測やヒアリングを省く。無ければ必要になった時点でユーザーに確認し、承認のうえで書き残す。
+作業リポの `.coadmap/workflow.json` に、既定ブランチ・worktree の置き場・ポート上書き env・post-setup コマンド・docker コマンド・品質ゲート・パイプラインロール・`coadmap.com` 以外のタスク URL のホストを書いておくと、skill はそれを正として推測やヒアリングを省く。無ければ必要になった時点でユーザーに確認し、承認のうえで書き残す。
 
 仕様と例、`~/.coadmap/` 配下の状態ファイル一覧は [skills/coadmap-task-workflow/references/configuration.md](skills/coadmap-task-workflow/references/configuration.md)。
 

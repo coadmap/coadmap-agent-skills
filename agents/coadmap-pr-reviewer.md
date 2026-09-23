@@ -20,7 +20,7 @@ tools: Read, Grep, Glob, Bash
    - **セキュリティ**: 認可、入力検証、秘匿情報の混入。
    - **リポ規約準拠**: lint / フォーマット / コミット規約。
 4. PR メタの形式チェック(`gh pr view <pr> --json body`)。以下は **must-fix** とする:
-   - PR body の1行目に Coadmap タスクリンク `[[<TASK_ID>] <TITLE>](https://coadmap.com/.../tasks/...)` があるか。
+   - PR body の1行目に Coadmap タスクリンク `[[<TASK_ID>] <TITLE>](https://coadmap.com/.../tasks/...)` があるか。リンク先は `coadmap.com`(サブドメイン含む)か、`.coadmap/workflow.json` の `taskHosts` に設定されたホストのタスク URL であること。
    - 別リポの PR への参照が素の `#番号` になっていないか(同一リポに誤解決されるため、`owner/repo#番号` のフル形式か完全 URL であること)。
 
 ## 返却フォーマット(呼び出し元が対応に使う)
