@@ -20,12 +20,18 @@ codex plugin add coadmap-task-workflow@coadmap-agent-skills
 
 ## Coadmap MCP の接続
 
-Coadmap の設定画面で API キーを発行し、`~/.codex/config.toml` に登録する。
+MCP サーバーとして登録し、OAuth でログインする。
+
+```bash
+codex mcp add coadmap-mcp --url https://mcp.coadmap.com/mcp
+codex mcp login coadmap-mcp
+```
+
+`codex mcp add` の代わりに `~/.codex/config.toml` へ `url` だけのエントリを書いてから `codex mcp login` してもよい。
 
 ```toml
 [mcp_servers.coadmap-mcp]
 url = "https://mcp.coadmap.com/mcp"
-http_headers = { "Authorization" = "Bearer <ApiKey>" }
 ```
 
 サーバー名は任意(選び方は [README.md](README.md#mcp-の接続名))。ツールは `mcp__<サーバー名>__<ツール名>` の名前で見え、サーバー名のハイフンはアンダースコアに変わる(`coadmap-mcp` → `mcp__coadmap_mcp__get_coadmap_task_dependency`)。
@@ -40,7 +46,7 @@ Codex の既定のサンドボックス内では、`git push`(SSH の ssh-agent)
 - plugin は agent を同梱しないため、PR レビューは skill が `references/review-checklist.md` の観点で inline に行う。
 - チェックリストは plan / update_plan で項目化される。
 - Codex アプリはセッション用の worktree を detached HEAD で用意することがある。skill はそれをそのまま使うが、ブランチは `codex/` prefix ではなく `<branchPrefix><TASK_ID>-<slug>` で、`git fetch origin` した最新の `origin/<base>` から切る(`references/02-worktree-setup.md`)。
-- トークン使用量の自己申告(opt-in)は rollout log を集計し、資格情報は `~/.codex/config.toml` の `http_headers.Authorization`(または `bearer_token_env_var` が指す環境変数)から取る。Codex 自身の OAuth 資格情報は読まない。
+- トークン使用量の自己申告(opt-in)は rollout log を集計し、資格情報は `~/.codex/config.toml` の `http_headers.Authorization`(または `bearer_token_env_var` が指す環境変数)から取る。Codex 自身の OAuth 資格情報は読まないため、OAuth だけで接続している Codex 環境では資格情報が見つからず、`COADMAP_API_TOKEN` + `COADMAP_API_URL` を設定しない限り opt-in しても何も送らない。
 
 ## plugin 機構を使わない場合
 

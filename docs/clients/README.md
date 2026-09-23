@@ -22,7 +22,7 @@ skill 本体(`skills/coadmap-task-workflow/`)はクライアント非依存の�
 | MCP の登録 | `claude mcp add`([claude-code.md](claude-code.md#coadmap-mcp-の接続)) | `~/.codex/config.toml` の `[mcp_servers.<name>]`([codex.md](codex.md#coadmap-mcp-の接続)) |
 | MCP ツール名の prefix | `mcp__<サーバー名>__<ツール名>` | `mcp__<サーバー名>__<ツール名>`。サーバー名のハイフンはアンダースコアに変わる(`coadmap-mcp` → `mcp__coadmap_mcp__get_coadmap_task_dependency`) |
 | トークン使用量の集計元 | transcript(`transcript_path` の JSONL) | rollout log |
-| トークン使用量の資格情報 | MCP OAuth 資格情報 → MCP 設定の `Authorization` ヘッダ | `~/.codex/config.toml` の `http_headers.Authorization` / `bearer_token_env_var` |
+| トークン使用量の資格情報 | MCP OAuth 資格情報 → MCP 設定の `Authorization` ヘッダ | `~/.codex/config.toml` の `http_headers.Authorization` / `bearer_token_env_var`。Codex の OAuth 資格情報は読まない([codex.md](codex.md#固有の注意)) |
 | skill 単体コピーの置き場 | `~/.claude/skills/` / リポの `.claude/skills/` | `~/.codex/skills/` / リポの `.agents/skills/` |
 
 クライアント管理の worktree を使う場合も、タスクブランチはクライアント独自の prefix(`claude/` / `codex/`)ではなく `<branchPrefix><TASK_ID>-<slug>` で `origin/<base>` から切る(`references/02-worktree-setup.md`)。
@@ -50,10 +50,12 @@ Coadmap MCP のツール名は接続方法で prefix が変わる(`mcp__coadmap-
 
 opt-in(`COADMAP_AI_USAGE_REPORT=1`)時の接続先とトークンは、次の順で解決する。どれでも解決できなければ黙って何もしない。
 
-1. 環境変数 `COADMAP_API_TOKEN` + `COADMAP_API_URL`(両方必須。dev 環境など標準以外の接続先はこの方法だけ)
+1. 環境変数 `COADMAP_API_TOKEN` + `COADMAP_API_URL`(両方必須。任意の接続先を指定できる)
 2. Claude Code の MCP OAuth 資格情報(`mcp.coadmap.com` に接続しているサーバーのもの)
 3. Claude Code の MCP 設定に直書きされた `Authorization` ヘッダ
 4. Codex の `~/.codex/config.toml` の `http_headers.Authorization`(または `bearer_token_env_var` が指す環境変数)
+
+2〜4 で見つかる接続先は `mcp.coadmap.com` / `mcp-dev.coadmap.com`(`.net` も同様)の MCP サーバーに限られ、既定では本番を優先する。`COADMAP_AI_USAGE_TARGET=dev` を設定すると dev の接続を優先する。
 
 ## 新しいクライアントを追加するとき
 

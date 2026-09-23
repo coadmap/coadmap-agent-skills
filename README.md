@@ -44,7 +44,7 @@ Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)
 
 ### Coadmap MCP の接続
 
-Coadmap の設定画面で API キーを発行し、MCP サーバーとして登録する(エンドポイントは `https://mcp.coadmap.com/mcp`、`Authorization: Bearer <ApiKey>` ヘッダを付ける)。API キーの発行手順は Coadmap のドキュメントを参照。クライアントごとの登録方法は [Claude Code](docs/clients/claude-code.md#coadmap-mcp-の接続) / [Codex](docs/clients/codex.md#coadmap-mcp-の接続)。
+Coadmap MCP(`https://mcp.coadmap.com/mcp`)をサーバーとして登録し、OAuth でログインする。クライアントごとの登録・ログイン方法は [Claude Code](docs/clients/claude-code.md#coadmap-mcp-の接続) / [Codex](docs/clients/codex.md#coadmap-mcp-の接続)。
 
 サーバー名は任意。skill はツール一覧から Coadmap MCP のツールを持つサーバーを探して使う。複数ある場合は名前ではなく、`get_coadmap_task_dependency` が返すタスク URL のホスト(URL 指定時はそのホスト、ID 指定時は `coadmap.com`)で 1 つに決める。
 
@@ -91,7 +91,7 @@ skill がチェックリストを作り、Orientation から順に進める。�
 export COADMAP_AI_USAGE_REPORT=1
 ```
 
-有効化した場合の接続先とトークンは、まず環境変数 `COADMAP_API_TOKEN` + `COADMAP_API_URL`(両方必須。dev 環境など標準以外の接続先はこの方法だけ)を見て、無ければクライアントの MCP 設定・資格情報から探す。クライアントごとの探索順は [docs/clients/README.md](docs/clients/README.md#トークン使用量の資格情報の解決順)。どれでも解決できなければ黙って何もしない。
+有効化した場合の接続先とトークンは、まず環境変数 `COADMAP_API_TOKEN` + `COADMAP_API_URL`(両方必須。任意の接続先を指定できる)を見て、無ければクライアントの MCP 設定・資格情報から探す。クライアントごとの探索順は [docs/clients/README.md](docs/clients/README.md#トークン使用量の資格情報の解決順)。どれでも解決できなければ黙って何もしない。
 
 送られるもの: エージェント種別、最もトークンを消費したモデル名、各トークン数の集計値、セッション ID、分かる場合のみブランチ名から推定したタスク ID。
 送られないもの: 会話内容・プロンプト・コード差分・ファイル内容(transcript はローカルでトークン集計にのみ使い、本文は一切送らない)、API トークン等の秘匿情報。hook 入力は argv に載せず stdin で worker に渡すので、`ps` から応答本文が読めることもない。

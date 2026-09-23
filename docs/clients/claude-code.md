@@ -15,13 +15,14 @@ hooks に信頼・レビューの手順は無く、インストール後の次�
 
 ## Coadmap MCP の接続
 
-Coadmap の設定画面で API キーを発行し、MCP サーバーとして登録する。
+MCP サーバーとして登録し、OAuth でログインする。
 
 ```bash
-claude mcp add --transport http --scope user \
-  coadmap-mcp https://mcp.coadmap.com/mcp \
-  --header "Authorization:Bearer <ApiKey>"
+claude mcp add --transport http --scope user coadmap-mcp https://mcp.coadmap.com/mcp
+claude mcp login coadmap-mcp
 ```
+
+ログインはセッション内の `/mcp` から行ってもよい。
 
 サーバー名は任意(選び方は [README.md](README.md#mcp-の接続名))。ツールは `mcp__<サーバー名>__<ツール名>` の名前で見える。
 
