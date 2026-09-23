@@ -69,14 +69,14 @@ http_headers = { "Authorization" = "Bearer <ApiKey>" }
 ### Claude Code
 
 ```
-/plugin marketplace add simula-labs/coadmap-agent-skills
+/plugin marketplace add coadmap/coadmap-agent-skills
 /plugin install coadmap-task-workflow@coadmap-agent-skills
 ```
 
 ### Codex
 
 ```
-codex plugin marketplace add simula-labs/coadmap-agent-skills
+codex plugin marketplace add coadmap/coadmap-agent-skills
 codex plugin add coadmap-task-workflow@coadmap-agent-skills
 ```
 
