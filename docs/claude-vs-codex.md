@@ -7,7 +7,7 @@ skill 本体(`skills/coadmap-task-workflow/`)はエージェント非依存の�
 | skill | `skills/` を plugin 経由で読み込み | `.codex-plugin/plugin.json` の `skills` で読み込み | なし(同一) |
 | `/coadmap-task` command | あり | slash command 互換なし | `CMDEV-1234 に着手して` のようにタスク ID を含めて依頼する。UserPromptSubmit hook が skill 利用を促す |
 | `coadmap-pr-reviewer` agent | `Agent` ツールで spawn | subagent 機構なし | skill が `references/review-checklist.md` の観点で inline レビューする |
-| hooks | `hooks/hooks.json` | `hooks/codex-hooks.json` | 中身は同じ。パス変数が `CLAUDE_PLUGIN_ROOT` / `PLUGIN_ROOT` で違うだけ |
+| hooks | `hooks/hooks.json` | `hooks/codex-hooks.json` | 中身は同じ。パス変数が `CLAUDE_PLUGIN_ROOT` / `PLUGIN_ROOT` で違うだけ。Codex は hook を信頼するまで実行しない(README「インストール > Codex」) |
 | チェックリスト化 | TodoWrite | plan / update_plan | skill は「使えるタスク管理ツール」と書いてあり、どちらでもよい。無ければ応答内のチェックリストで代替する |
 | トークン使用量の自己申告 | SessionEnd + Stop | SessionEnd + Stop | Codex の rollout log も集計対象(上流 v0.4.0 相当) |
 
