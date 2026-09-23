@@ -10,18 +10,19 @@ input="$(cat)"
 # (1) task URL。末尾に付きやすい区切り/閉じ括弧/句読点（ASCII・全角とも）は除去する。
 # URL として有効な末尾文字集合(英数 = / _ ~ + % -)以外の trailing バイトを LC_ALL=C で
 # 落とすことで、全角「。」等のマルチバイト句読点も安全に除去する（base64 の '=' は保持）。
-# 先頭の境界文字は正規表現の都合で一緒に取れるので落とす(境界に 'h' は来ない)。
+# 先頭の境界文字は正規表現の都合で一緒に取れるので落とす(境界に英字は来ない)。
 url_re="$(coadmap_task_url_prefix_regex "$(coadmap_task_host_pattern .)")[^[:space:]]+"
-url="$(printf '%s' "$input" | LC_ALL=C grep -oE "$url_re" | head -1 || true)"
+url="$(printf '%s' "$input" | LC_ALL=C grep -oiE "$url_re" | head -1 || true)"
 if [[ -n "$url" ]]; then
-  url="$(printf '%s' "$url" | LC_ALL=C sed -E 's#^[^h]##; s#[^A-Za-z0-9=/_~+%-]+$##')"
+  url="$(printf '%s' "$url" | LC_ALL=C sed -E 's#^[^hH]##; s#[^A-Za-z0-9=/_~+%-]+$##')"
   printf '%s' "$url"; exit 0
 fi
 
 # 文字コード・ハッシュ・規格番号(UTF-8, SHA-256, ISO-8601, RFC-7231 等)は displayId と同じ形をしている。
-# 文脈で見分けるのは日本語の依頼文では当てにならないので、開発の会話に出やすい接頭辞を除外する。
+# 文脈で見分けるのは日本語の依頼文では当てにならないので、開発の会話でハイフン付きで書かれやすい接頭辞を除外する。
+# MD5 / ES2015 / Base64 のようにハイフン無しで書くのが普通のものは、namespace と衝突させないため入れない。
 # 同名の namespace を使うチームは、[RFC-12] のような角括弧付きの表記か URL で指定すれば拾える。
-standard_prefixes='^(UTF|UCS|ISO|IEC|JIS|EUC|CP|SHA|MD|CRC|HMAC|AES|DES|RSA|RFC|CVE|CWE|ES|ECMA|IEEE|PEP|JSR|TLS|SSL|HTTP|IPV|GPT|WPA|BASE|COVID|SARS|HDMI|USB|DDR|LTE|PCI)-'
+standard_prefixes='^(UTF|UCS|ISO|IEC|JIS|EUC|CP|SHA|CRC|HMAC|AES|DES|RSA|RFC|CVE|CWE|ECMA|IEEE|PEP|JSR|TLS|SSL|HTTP|IPV|GPT|WPA|COVID|SARS|HDMI|USB|DDR|LTE|PCI)-'
 drop_standards() { { grep -viE "$standard_prefixes" || true; } | head -1; }
 
 # (2a) タスクタイトルの表記 [<displayId>] <title>。角括弧で囲まれていればタスク ID とみなせるので、

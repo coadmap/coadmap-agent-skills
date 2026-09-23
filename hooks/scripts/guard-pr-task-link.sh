@@ -10,6 +10,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../skills/coadmap-task-workflow/scripts/lib/task-link.sh
 source "$HERE/../../skills/coadmap-task-workflow/scripts/lib/task-link.sh"
 input="$(cat)"
+# 字句解析は ${var:i:1} で位置を進める。マルチバイトロケールだと位置の計算が毎回先頭から
+# 文字を数え直すので、長い本文で二乗の時間がかかり hook の時間切れで検査が素通りする。
+# 区切り文字はすべて ASCII なので、バイト単位で読んでも判定は変わらない。
+export LC_ALL=C
 
 # このセッションで Coadmap タスクが検出されていなければ対象外
 # （マーカーは detect-task-id.sh が UserPromptSubmit 時に作成する）
@@ -38,7 +42,7 @@ config_dir="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null || true)"
 task_link_re="$(coadmap_task_url_prefix_regex "$(coadmap_task_host_pattern "$config_dir")")[A-Za-z0-9=_%~+-]{8,}"
 # grep -q は一致した時点で入力を読み捨てるので、長い本文だと書き手が SIGPIPE で落ち、
 # pipefail によって「リンク無し」と判定されてしまう。最後まで読ませる。
-has_task_link() { LC_ALL=C grep -E "$task_link_re" >/dev/null; }
+has_task_link() { grep -Ei "$task_link_re" >/dev/null; }
 
 block() {
   cat >&2 <<'EOF'
@@ -80,6 +84,7 @@ shell_word_kinds=()
 subst_texts=()
 heredoc_texts=()
 heredoc_ops=()
+heredoc_quoted=()
 pending_delims=()
 pending_strip=()
 pending_quoted=()
@@ -140,8 +145,29 @@ parse_heredoc_delim() {
 # usage: read_heredoc_body <本文の先頭位置> <区切り語> <strip>
 #   -> hd_body / hd_next(区切り行の直後の位置)
 read_heredoc_body() {
-  local pos="$1" rest line cmp
+  local pos="$1" rest line cmp head
   hd_body=""
+  # 行ごとに残りを切り出すと本文の長さの二乗になるので、タブを削らない場合は区切り行を一度で探す。
+  if [[ $3 -eq 0 ]]; then
+    rest=$'\n'"${src:pos}"
+    head="${rest%%$'\n'"$2"$'\n'*}"
+    if [[ "$head" != "$rest" ]]; then
+      hd_body="${head:1}"$'\n'
+      hd_next=$((pos + ${#head} + ${#2} + 1))
+      [[ -n "${head:1}" ]] || hd_body=""
+      return 0
+    fi
+    if [[ "$rest" == *$'\n'"$2" ]]; then
+      head="${rest%$'\n'"$2"}"
+      hd_body="${head:1}"
+      [[ -z "$hd_body" ]] || hd_body+=$'\n'
+      hd_next=${#src}
+      return 0
+    fi
+    hd_body="${rest:1}"
+    hd_next=${#src}
+    return 0
+  fi
   while ((pos < ${#src})); do
     rest="${src:pos}"
     line="${rest%%$'\n'*}"
@@ -160,12 +186,15 @@ read_heredoc_body() {
 # 中の heredoc 本文は読み飛ばす。本文の括弧や引用符を数えると、よく使われる
 # --body "$(cat <<'EOF' ... EOF)" で置換の終わりを見誤る。
 read_dollar_paren() {
-  local j=$(($1 + 2)) depth=1 quote="" c k
+  local j=$(($1 + 2)) depth=1 quote="" c k rest chunk
   local delims=() strips=()
   while ((j < ${#src})); do
     c="${src:j:1}"
     if [[ "$quote" == "'" ]]; then
-      [[ "$c" == "'" ]] && quote=""
+      rest="${src:j}"
+      chunk="${rest%%\'*}"
+      j=$((j + ${#chunk}))
+      quote=""
     elif [[ "$quote" == '"' ]]; then
       if [[ "$c" == "\\" ]]; then
         j=$((j + 1))
@@ -267,6 +296,7 @@ consume_heredocs() {
     index="${#heredoc_texts[@]}"
     heredoc_texts[$index]="$hd_body"
     heredoc_ops[$index]="${pending_ops[k]}"
+    heredoc_quoted[$index]="${pending_quoted[k]}"
     [[ ${pending_quoted[k]} -eq 1 ]] || collect_heredoc_substitutions "$hd_body"
   done
   pending_delims=()
@@ -295,7 +325,7 @@ start_heredoc() {
 }
 
 tokenize_command() {
-  local state=unquoted char next
+  local state=unquoted char next rest chunk len
   src="$1"
   i=0
   word=""
@@ -306,18 +336,44 @@ tokenize_command() {
   subst_texts=()
   heredoc_texts=()
   heredoc_ops=()
+  heredoc_quoted=()
+  len=${#src}
 
-  for ((i = 0; i < ${#src}; i++)); do
+  # 区切りでない文字の並びは 1 文字ずつ足さず、次の区切りまでまとめて読む(長い本文での速度のため)。
+  for ((i = 0; i < len; i++)); do
     char="${src:i:1}"
     case "$state" in
       single)
+        rest="${src:i}"
+        chunk="${rest%%\'*}"
+        word+="$chunk"
+        i=$((i + ${#chunk}))
+        state=unquoted
+        ;;
+      ansi)
         if [[ "$char" == "'" ]]; then
           state=unquoted
+        elif [[ "$char" == "\\" && $((i + 1)) -lt $len ]]; then
+          i=$((i + 1))
+          next="${src:i:1}"
+          case "$next" in
+            n) word+=$'\n' ;;
+            t) word+=$'\t' ;;
+            r) word+=$'\r' ;;
+            *) word+="$next" ;;
+          esac
         else
           word+="$char"
         fi
         ;;
       double)
+        rest="${src:i}"
+        chunk="${rest%%[\"\\\$\`]*}"
+        if [[ -n "$chunk" ]]; then
+          word+="$chunk"
+          i=$((i + ${#chunk} - 1))
+          continue
+        fi
         if [[ "$char" == '"' ]]; then
           state=unquoted
         elif [[ "$char" == "\\" && $((i + 1)) -lt ${#src} ]]; then
@@ -332,6 +388,20 @@ tokenize_command() {
         fi
         ;;
       unquoted)
+        case "$char" in
+          [[:space:]]|"'"|'"'|"\\"|'#'|'$'|'`'|'<'|'>'|';'|'|'|'&'|'('|')') ;;
+          *)
+            rest="${src:i}"
+            chunk="${rest%%[[:space:]\'\"\\#\$\`<>\;\|\&\(\)]*}"
+            if [[ $word_started -eq 0 ]]; then
+              word_started=1
+              word_kind=1
+            fi
+            word+="$chunk"
+            i=$((i + ${#chunk} - 1))
+            continue
+            ;;
+        esac
         if [[ "$char" == ' ' || "$char" == $'\t' || "$char" == $'\r' ]]; then
           append_shell_word
         elif [[ "$char" == $'\n' ]]; then
@@ -386,6 +456,15 @@ tokenize_command() {
               append_shell_operator "$char"
               ;;
             '$'|'`')
+              if [[ "$char" == '$' && "${src:i+1:1}" == "'" ]]; then
+                if [[ $word_started -eq 0 ]]; then
+                  word_started=1
+                  word_kind=0
+                fi
+                state=ansi
+                i=$((i + 1))
+                continue
+              fi
               if [[ $word_started -eq 0 ]]; then
                 word_started=1
                 word_kind=1
@@ -491,11 +570,13 @@ gh_pr_create_args() {
 }
 
 inspect_pr_options() {
-  local i word kind next_index
+  local i word kind next_index k
   body=""
   body_file=""
   body_seen=0
   body_file_seen=0
+  stdin_heredoc=-1
+  help_requested=0
 
   for ((i = pr_args_index; i < ${#shell_words[@]}; i++)); do
     word="${shell_words[$i]}"
@@ -503,6 +584,9 @@ inspect_pr_options() {
     if [[ $kind -eq -1 ]]; then
       case "$word" in
         '<'|'>')
+          for ((k = 0; k < ${#heredoc_ops[@]}; k++)); do
+            [[ ${heredoc_ops[k]} -eq $i ]] && stdin_heredoc=$k
+          done
           while [[ ${shell_word_kinds[$((i + 1))]:--1} -eq -1 \
             && ( "${shell_words[$((i + 1))]:-}" == "<" \
               || "${shell_words[$((i + 1))]:-}" == ">" \
@@ -519,6 +603,7 @@ inspect_pr_options() {
 
     case "$word" in
       --) break ;;
+      --help|-h) help_requested=1 ;;
       --body|-b)
         body_seen=1
         next_index=$((i + 1))
@@ -575,6 +660,8 @@ check_pr_create() {
   [[ $1 -eq 1 ]] && return 0
 
   inspect_pr_options
+  # ヘルプ表示は PR を作らない
+  [[ $help_requested -eq 1 ]] && return 0
   if [[ $body_seen -eq 1 ]] && printf '%s' "$body" | has_task_link; then
     return 0
   fi
@@ -582,6 +669,16 @@ check_pr_create() {
   # --body-file / -F は読み取れる実パスだけを厳格検査する。hook は実行前に
   # 動くため、シェル変数や stdin は eval せず、理由付き警告で gh に委ねる。
   if [[ $body_file_seen -eq 1 ]]; then
+    if [[ "$body_file" == "-" && $stdin_heredoc -ge 0 ]]; then
+      printf '%s' "${heredoc_texts[stdin_heredoc]}" | has_task_link && return 0
+      # 区切りを引用しない heredoc は変数やコマンド置換で本文を組み立てられるので、
+      # 展開を含むなら読めない本文ファイルと同じく警告して gh に委ねる。
+      if [[ ${heredoc_quoted[stdin_heredoc]} -eq 0 && "${heredoc_texts[stdin_heredoc]}" == *['$`']* ]]; then
+        printf >&2 '[coadmap-task-workflow] 警告: PR 本文の heredoc が展開を含み読み取れないため、ブロックせず続行します\n'
+        return 0
+      fi
+      block
+    fi
     if [[ "$body_file" == "-" || ! -f "$body_file" || ! -r "$body_file" ]]; then
       printf >&2 '[coadmap-task-workflow] 警告: PR 本文ファイルを読み取れないため、ブロックせず続行します: %q\n' "$body_file"
       return 0

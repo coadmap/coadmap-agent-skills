@@ -276,4 +276,48 @@ rc=0; mcp s1 mcp__github__create_pull_request "$long_body" || rc=$?
 # $() 内の heredoc 本文の括弧・引用符で置換の終わりを見誤らない
 expect_passed "heredoc 本文の閉じ括弧で置換を打ち切らない" $'gh pr create --body "$(cat <<\'EOF\'\n[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)\n1) it\'s done :)\nEOF\n)" && echo "gh pr create" > /dev/null'
 expect_blocked "heredoc 本文の引用符で後ろの gh pr create を見失わない" $'gh pr view --json body -q "$(cat <<\'EOF\'\nit\'s a note\nEOF\n)"; gh pr create --body "no link"'
+# ラベル直後や括弧で囲んだタスクリンクも認める(区切りとして ":" "@" "+" を許す)
+expect_passed "Label:URL 形式は通過" "gh pr create --body 'Task:$LINK'"
+expect_passed "**Label**:URL 形式は通過" "gh pr create --body '**Task**:$LINK'"
+expect_passed "(URL) 形式は通過" "gh pr create --body 'see ($LINK)'"
+expect_passed "<URL> 形式は通過" "gh pr create --body 'see <$LINK>'"
+# ホスト名は大文字小文字を区別しない
+expect_passed "大文字混じりのホストは通過" "gh pr create --body 'https://Coadmap.com/ws/tasks/VGFzazoxMjM='"
+# ANSI-C quoting の \' で字句解析を崩さない
+expect_passed "\$'...' 内の \\' を含む本文のリンクで通過" "gh pr create --body \$'It\\'s done\\n\\n[x]($LINK)'"
+expect_blocked "\$'...' の後ろの gh pr create も検査する" "echo \$'it\\'s'; gh pr create --body 'no link'"
+# --body-file - に付いた heredoc は本文として読む
+expect_passed "--body-file - の heredoc 本文のリンクで通過" $'gh pr create --body-file - <<\'EOF\'\n[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)\nEOF'
+expect_blocked "--body-file - の heredoc 本文にリンクが無ければブロック" $'gh pr create --body-file - <<\'EOF\'\nno link\nEOF'
+warning="$TMP/heredoc-expansion.log"
+# shellcheck disable=SC2016 # hook に展開前の変数文字列を渡す回帰テスト
+unresolved_cmd=$'gh pr create --body-file - <<EOF\n$TASK_LINE\nEOF'
+rc=0; run_capture_stderr s1 "$unresolved_cmd" "$warning" || rc=$?
+if [[ $rc -eq 0 ]] && grep -q 'heredoc が展開を含み読み取れないため' "$warning"; then
+  echo "ok: 展開を含む heredoc 本文は警告して通過"
+else
+  echo "NG: 展開を含む heredoc 本文の扱いが不正 rc=$rc"
+  fail=1
+fi
+# ヘルプ表示は PR を作らない
+expect_passed "gh pr create --help は対象外" "gh pr create --help"
+expect_passed "gh pr create -h は対象外" "gh pr create -h"
+# 長い本文でも hook の時間切れより十分早く終わる(字句解析が二乗の時間にならない)
+long_inline="[[CMDEV-1] x]($LINK)"$'\n'"$(seq 1 6000 | sed 's/^/line of text /')"
+for quote in single double heredoc; do
+  case $quote in
+    single) long_cmd="gh pr create --title t --body '$long_inline'" ;;
+    double) long_cmd="gh pr create --title t --body \"$long_inline\"" ;;
+    heredoc) long_cmd="gh pr create --title t --body \"\$(cat <<'EOF'"$'\n'"$long_inline"$'\n'"EOF"$'\n'")\"" ;;
+  esac
+  start=$SECONDS
+  rc=0; run s1 "$long_cmd" || rc=$?
+  elapsed=$((SECONDS - start))
+  if [[ $rc -eq 0 && $elapsed -le 10 ]]; then
+    echo "ok: ${#long_inline} バイトの本文($quote)を ${elapsed}s で検査"
+  else
+    echo "NG: 長い本文($quote)の検査 rc=$rc ${elapsed}s"
+    fail=1
+  fi
+done
 rm -rf "$TMP"; exit $fail

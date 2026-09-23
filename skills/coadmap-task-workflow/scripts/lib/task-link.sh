@@ -2,7 +2,7 @@
 # タスク URL の判定を PR ガード hook とタスク ID 抽出で共有する。source して使う。
 #   coadmap_task_host_pattern [start-dir]  -> 許可ホストの ERE 選択肢 "(coadmap\.com|...)"
 #   coadmap_task_url_prefix_regex <hosts>  -> ID 直前の "/tasks/" までの ERE
-# 判定は LC_ALL=C の grep -E で使う前提。
+# 判定は LC_ALL=C の grep -Ei で使う前提(ホスト名は大文字小文字を区別しない)。
 
 # 許可ホストは coadmap.com(サブドメイン含む)と、.coadmap/workflow.json の taskHosts だけ。
 # 任意ホストの /tasks/ を認めると、それらしい URL を書くだけで検査を通せてしまう。
@@ -21,8 +21,9 @@ coadmap_task_host_pattern() {
   printf '(%s)' "$hosts"
 }
 
-# URL の直前が URL 構成文字だと、別 URL のクエリに埋め込まれた文字列
+# URL の直前が別 URL のパス・クエリ・フラグメントを構成する文字だと、埋め込まれた文字列
 # (例: https://evil.example/?u=https://coadmap.com/...)を本物のリンクと取り違える。
+# ":" "@" "+" は "Task:https://..." のようなラベル直後の表記で普通に現れるので区切りとして認める。
 coadmap_task_url_prefix_regex() {
-  printf '%s' "(^|[^A-Za-z0-9._~:/?#@&=%+-])https?://([A-Za-z0-9-]+\\.)*$1(:[0-9]+)?/([^[:space:]\"'()<>]*/)?tasks/"
+  printf '%s' "(^|[^A-Za-z0-9._~/?#&=%-])https?://([A-Za-z0-9-]+\\.)*$1(:[0-9]+)?/([^[:space:]\"'()<>]*/)?tasks/"
 }

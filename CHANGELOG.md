@@ -3,11 +3,12 @@
 ## Unreleased
 
 - PR リンク検査 hook が見落としていた PR 作成を検査するようにした: `gh pr new`、前に置くラッパーコマンド(`timeout` / `nice` / `xargs` / `env -u` / `command -p` / `time -p` / `stdbuf` / `{ ...; }`)経由、`bash --login -c` のように他の引数の後ろにある `-c`、`$(...)` 内の `gh pr create`
-- MCP の `*__create_pull_request` ツールによる PR 作成も、`tool_input.body` のタスクリンクを検査するようにした。hooks の設定にエントリを 1 つ足したので、hooks の信頼が必要なクライアントでは信頼し直す
+- MCP の `*__create_pull_request` ツールによる PR 作成も、`tool_input.body` のタスクリンクを検査するようにした。hooks の設定にエントリを 1 つ足したので、hooks の信頼が必要なクライアントでは信頼し直す。Codex での発火は未確認で、次回の Codex E2E で確認する
 - PR リンク検査の誤ブロックを直した: `--body "$(cat <file>)"` / `--body "$(< <file>)"` は `--body-file` と同じく中身を読む。引用符内の文字列(`--title` 内のバックティックや `sh -c` の文字列)や heredoc の本文を構文・コマンドとして扱わない
 - タスクリンクの判定で、別 URL のクエリに埋め込まれたリンクと、8 文字未満の ID を認めないようにした
 - タスク ID の検出で `UTF-8` / `SHA-256` / `ISO-8601` / `RFC-7231` などの規格名を拾わないようにした。`[pypoo2-1]` のような角括弧付きの小文字 displayId と、`/tasks/` 直下のタスク URL を拾い、`evilcoadmap.com` のような似たホストは拾わない
 - `.coadmap/workflow.json` の `taskHosts` で、`coadmap.com` 以外のタスク URL のホストを許可できるようにした。タスク検出・PR リンク検査・PR レビューが同じ許可リストを使う
+- PR リンク検査で大文字混じりのホスト名を認めるようにした。`$'...'` の本文を正しく読み、`--body-file -` に付けた heredoc は本文として検査し、`--help` / `-h` は対象外にした。長い本文(100KB 程度)でも時間切れで検査が素通りしないようにした
 - PR リンク検査は付け忘れ対策で、意図的な回避(`eval` / `python -c` / `gh api` での作成、`gh pr edit` での書き換え)は防がないことを README と hook に明記した
 - Coadmap MCP のサーバーが複数接続されているとき、サーバー名ではなく `get_coadmap_task_dependency` が返す `taskUrl` のホストで使うサーバーを決めるようにした(URL 指定時はそのホスト、ID 指定時は `coadmap.com`)
 - タスク取得をワークスペースのタスク一覧からの検索ではなく `get_coadmap_task_dependency` で直接行うようにした。一覧はツール出力の上限を超えて切れていた。所属 workspace はタスクの現在パイプライン ID を含む workspace として特定する

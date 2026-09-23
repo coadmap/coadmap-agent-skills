@@ -52,4 +52,12 @@ got="$(cd "$TMP" && printf '%s' "https://coadmap.example.co.jp/ws/tasks/VGFzazox
 got="$(cd "$(dirname "$TMP")" && printf '%s' "https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM=" | bash "$SUT" || true)"
 [[ -z "$got" ]] && echo "ok: 未設定ホストのURLは拾わない" || { echo "NG: 未設定ホストのURL (got='$got')"; fail=1; }
 rm -rf "$TMP"
+# ラベル直後・括弧内の URL も拾う
+check "Label:URL"              "Task:https://coadmap.com/ws/tasks/VGFzazoxMjM0"       "https://coadmap.com/ws/tasks/VGFzazoxMjM0"
+check "**Label**:URL"          "**Task**:https://coadmap.com/ws/tasks/VGFzazoxMjM0"   "https://coadmap.com/ws/tasks/VGFzazoxMjM0"
+check "<URL>"                  "<https://coadmap.com/ws/tasks/VGFzazoxMjM0>"          "https://coadmap.com/ws/tasks/VGFzazoxMjM0"
+# ホスト名の大文字小文字は区別しない
+check "大文字混じりのホスト"   "https://Coadmap.com/ws/tasks/VGFzazoxMjM0"            "https://Coadmap.com/ws/tasks/VGFzazoxMjM0"
+# ハイフン無しで書くのが普通の規格名は除外リストに入れない(同名 namespace を拾えるように)
+check "除外しない接頭辞"       "MD-12 を直す"                                         "MD-12"
 exit $fail
