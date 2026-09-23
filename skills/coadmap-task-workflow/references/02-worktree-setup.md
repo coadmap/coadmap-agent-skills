@@ -29,10 +29,11 @@ for repo in "<repoA>" "<repoB>"; do
   [[ -n "$base" ]] || base="$(git -C "$repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
   [[ -n "$base" ]] || { echo "既定ブランチを特定できません: $repo"; exit 1; }   # ユーザーに確認して設定に残す
   git -C "$repo" fetch origin
-  git -C "$repo" worktree add "$repo/$wtdir/<TASK_ID>" -b "$name" "origin/$base"
+  git -C "$repo" worktree add --no-track "$repo/$wtdir/<TASK_ID>" -b "$name" "origin/$base"
 done
 ```
 
+- `--no-track` を付けるのは、新ブランチの upstream が `origin/<base>` になると、引数なしの `git push` / `git pull` が base に向いてしまうため。
 - 既定ブランチは設定の `repos[].defaultBranch` を優先し、無ければ `origin/HEAD` から求める。どちらも取れなければ推測せず、ユーザーに確認して設定に残す。
 - worktree ディレクトリが gitignore されていないリポでは、`.git/info/exclude` に追記するか、ユーザーに置き場を確認する。
 

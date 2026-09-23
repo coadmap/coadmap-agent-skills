@@ -18,7 +18,7 @@ Coadmap タスクの着手から完了・後片付けまでのライフサイク
 
 ## 最初にやること
 
-以下のチェックリストを **タスク管理ツール(TodoWrite / plan など、使えるもの)で必ず項目化**してから着手する。各フェーズの詳細は必要になった時点で references を読む。
+以下のチェックリストを項目化してから着手する。タスク管理ツール(TodoWrite / plan など)が使えればそれで項目化し、無ければ応答内にチェックリストを示して進捗をそこで更新する。各フェーズの詳細は必要になった時点で references を読む。
 
 - [ ] 1. Orientation: 本人アカウント解決 + タスク/ワークスペースコンテキスト取得 + プロジェクト設定の読み込み → [references/00-orientation.md](references/00-orientation.md)
 - [ ] 2. DOING へ移動 + アサイン/見積もり/スプリント確認・設定 → [references/01-start-doing.md](references/01-start-doing.md)
@@ -54,7 +54,14 @@ Coadmap タスクの着手から完了・後片付けまでのライフサイク
 
 ## MCP ツールの呼び方
 
-本 skill の references は Coadmap MCP のツールを `get_coadmap_workspaces` のような **ツール名だけ**で書く。実際の呼び出し名は接続方法によって prefix が異なる(例: `mcp__coadmap-mcp__get_coadmap_workspaces`)。セッションで利用可能なツール一覧から `coadmap` を含むサーバーを探し、その prefix を付けて呼ぶ。
+本 skill の references は Coadmap MCP のツールを `get_coadmap_workspaces` のような **ツール名だけ**で書く。実際の呼び出し名は接続方法によって prefix が異なる(例: `mcp__coadmap-mcp__get_coadmap_workspaces`)。セッションで利用可能なツール一覧から Coadmap MCP のサーバー(`get_coadmap_task_dependency` を持つもの)を探し、その prefix を付けて呼ぶ。
+
+該当サーバーが複数あっても、**サーバー名だけで選んではならない**。名前は利用者が任意に付けたもので、エージェントからは接続先が見えないため。候補に順に `get_coadmap_task_dependency` を呼び、返った `taskUrl`(`identity.taskUrl`)のホストで 1 つに決める:
+
+- タスク URL が渡されていれば、そのホストと一致するサーバー
+- タスク ID だけなら、本番(`coadmap.com`)のサーバー。`coadmap.com` を返す候補が無ければ、タスクを返せた候補が 1 つならそれを使い、複数ならユーザーに確認する
+
+一致した時点で決め、以後セッション中はそのサーバーを使い続ける。この呼び出しは 00 のタスク取得を兼ねるので、サーバーが 1 つなら追加の呼び出しは発生しない。
 
 ## scripts(すべて `<skill dir>/scripts/` 配下)
 

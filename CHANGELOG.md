@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Coadmap MCP のサーバーが複数接続されているとき、サーバー名ではなく `get_coadmap_task_dependency` が返す `taskUrl` のホストで使うサーバーを決めるようにした(URL 指定時はそのホスト、ID 指定時は `coadmap.com`)
+- タスク取得をワークスペースのタスク一覧からの検索ではなく `get_coadmap_task_dependency` で直接行うようにした。一覧はツール出力の上限を超えて切れていた。所属 workspace はタスクの現在パイプライン ID を含む workspace として特定する
+- worktree 作成時に `--no-track` を付け、新ブランチの upstream が `origin/<base>` にならないようにした
+- タスク管理ツールが無い環境では、応答内にチェックリストを示して進捗を更新するようにした
+
 ## 0.1.0
 
 初版。simula-labs 社内 plugin `coadmap-task-workflow`(社内マーケットプレイス `simula-labs-plugins`)を、Coadmap を使う任意の開発チームが Claude Code / Codex で使えるように汎用化した。
