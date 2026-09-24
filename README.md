@@ -110,3 +110,4 @@ CI は ubuntu と macOS の両方で回る。skill やドキュメントを書�
 ## ライセンス
 
 MIT
+<!-- CMDEV-11278: Codex plugin workflow verification. -->
