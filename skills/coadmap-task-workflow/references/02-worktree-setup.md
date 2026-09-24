@@ -4,7 +4,7 @@
 
 このフェーズは「1 台のマシンで複数セッションを並行する」ローカル CLI 向けの手順。セッションごとに隔離されたサンドボックス(クラウド実行など)で動いている場合は、worktree もポート割当も不要なのでフェーズ全体をスキップし、その旨をユーザーに伝える。
 
-クライアントがセッション用の worktree を既に用意している場合(detached HEAD やクライアント独自ブランチの管理 worktree が渡される等。例: Codex アプリ、Claude Code デスクトップアプリ)は、新たに作らずそれを使ってよい。ただしタスクブランチは下記 2 と同じく、`git fetch origin` のうえで `origin/$base` から `<branchPrefix><TASK_ID>-<slug>` で切る(`git switch -c "$name" --no-track "origin/$base"`。`base` の求め方も 2 と同じ)。用意された HEAD は古い base を指していることがあるため、そこから切らない。クライアント独自の既定 prefix(`codex/` / `claude/` など)は使わない。ブランチ名はリポのブランチ規約や他リポとの対応付けに使われるため、クライアントに合わせると崩れる。
+クライアントがセッション用の worktree を既に用意している場合(detached HEAD やクライアント独自ブランチの管理 worktree が渡される等。例: Codex アプリ、Claude Code デスクトップアプリ)は、新たに作らずそれを使ってよい。ただしタスクブランチは下記 2 と同じく、`git fetch origin` のうえで `origin/$base` から `<branchPrefix><TASK_ID>-<slug>` で切る(`git switch -c "$name" --no-track "origin/$base"`。`base` の求め方も 2 と同じ。作業再開でタスクブランチが既にあれば `-c` を付けずにそれへ切り替える)。用意された HEAD は古い base を指していることがあるため、そこから切らない。クライアント独自の既定 prefix(`codex/` / `claude/` など)は使わない。ブランチ名はリポのブランチ規約や他リポとの対応付けに使われるため、クライアントに合わせると崩れる。
 
 このフェーズで使う値は `.coadmap/workflow.json`(00 で読み込み済み)を正とする。キーの意味は [configuration.md](configuration.md) を参照。以下のコード例では、設定を `CFG` に読み込んである前提で書く:
 
@@ -31,9 +31,17 @@ for repo in "<repoA>" "<repoB>"; do
   [[ -n "$base" ]] || base="$(git -C "$repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
   [[ -n "$base" ]] || { echo "既定ブランチを特定できません: $repo"; exit 1; }   # ユーザーに確認して設定に残す
   git -C "$repo" fetch origin
-  git -C "$repo" worktree add --no-track "$repo/$wtdir/<TASK_ID>" -b "$name" "origin/$base"
+  if git -C "$repo" worktree list --porcelain | grep -qxF "branch refs/heads/$name"; then
+    continue                                               # 作業再開: 既存の worktree を使う
+  elif git -C "$repo" show-ref --verify --quiet "refs/heads/$name"; then
+    git -C "$repo" worktree add "$repo/$wtdir/<TASK_ID>" "$name"
+  else
+    git -C "$repo" worktree add --no-track "$repo/$wtdir/<TASK_ID>" -b "$name" "origin/$base"
+  fi
 done
 ```
+
+- 作業再開時はタスクのブランチや worktree が既にあるので、作り直さずに使う(`-b` は既存ブランチがあると失敗する)。既存 worktree のパスは `git worktree list` で確かめる。
 
 - `--no-track` を付けるのは、新ブランチの upstream が `origin/<base>` になると、引数なしの `git push` / `git pull` が base に向いてしまうため。
 - 既定ブランチは設定の `repos[].defaultBranch` を優先し、無ければ `origin/HEAD` から求める。どちらも取れなければ推測せず、ユーザーに確認して設定に残す。

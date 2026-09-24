@@ -9,7 +9,7 @@ gh pr checks <pr>          # チェック一覧とステータス
 gh pr checks <pr> --watch  # 完了まで待機する場合
 ```
 
-- 失敗チェックがあれば `gh run view <run-id> --log-failed` 等で原因を確認し、**修正 → 再 push → 再確認**を繰り返す。
+- 失敗チェックがあれば `gh run view <run-id> --log-failed` 等で原因を確認し、**修正 → 修正内容を示して承認を得てから再 push → 再確認**を繰り返す。
 - ローカルでの再現コマンド(lint/type/test)は設定の `qualityGate[]`、無ければ `CLAUDE.md` / `AGENTS.md` を参照する。
 
 ## 完了条件

@@ -5,23 +5,43 @@ RESOLVE="$HERE/../resolve-identity.sh"; SAVE="$HERE/../save-identity.sh"; ROLES=
 TMP="$(mktemp -d)"; export COADMAP_STATE_FILE="$TMP/task-flow.json"
 fail=0
 # 未保存なら sentinel(空) + exit 3
-out="$(bash "$RESOLVE" || echo "rc=$?")"
+out="$(bash "$RESOLVE" coadmap.com || echo "rc=$?")"
 [[ "$out" == "rc=3" ]] && echo "ok: 未保存はrc=3" || { echo "NG: 未保存 got='$out'"; fail=1; }
-# 保存後は accountId を返す
-bash "$SAVE" "acc_123" "you@example.com" "You"
-got="$(bash "$RESOLVE")"
+# ホスト指定が無ければ usage エラー(黙って既定ホストで引かない)
+out="$(bash "$RESOLVE" 2>/dev/null || echo "rc=$?")"
+[[ "$out" == "rc=2" ]] && echo "ok: ホスト未指定はrc=2" || { echo "NG: ホスト未指定 got='$out'"; fail=1; }
+# 保存後は accountId を返す。URL で渡しても同じホストキーになる
+bash "$SAVE" "https://Coadmap.com/ns/tasks/abc" "acc_123" "you@example.com" "You"
+got="$(bash "$RESOLVE" coadmap.com)"
 [[ "$got" == "acc_123" ]] && echo "ok: 保存後はaccountId" || { echo "NG: got='$got'"; fail=1; }
-jq -e '.identity.email == "you@example.com"' "$COADMAP_STATE_FILE" >/dev/null && echo "ok: email保存" || { echo "NG: email"; fail=1; }
+jq -e '.identities["coadmap.com"].email == "you@example.com"' "$COADMAP_STATE_FILE" >/dev/null && echo "ok: email保存" || { echo "NG: email"; fail=1; }
+# 別ホストの本人は混ざらない
+out="$(bash "$RESOLVE" dev.example.com || echo "rc=$?")"
+[[ "$out" == "rc=3" ]] && echo "ok: 別ホストは未登録扱い" || { echo "NG: 別ホストに漏れた got='$out'"; fail=1; }
+bash "$SAVE" "dev.example.com:8443" "acc_dev" "you@example.com" "You"
+[[ "$(bash "$RESOLVE" "http://dev.example.com:8443/x")" == "acc_dev" && "$(bash "$RESOLVE" coadmap.com)" == "acc_123" ]] \
+  && echo "ok: ホストごとに保持" || { echo "NG: ホスト別保持"; fail=1; }
+# userinfo と末尾の FQDN ドットは落とす(ポートは残す)
+[[ "$(bash "$RESOLVE" "https://user@COADMAP.com./ns/tasks/x")" == "acc_123" ]] && echo "ok: userinfo / 末尾ドットを無視" || { echo "NG: userinfo / 末尾ドット"; fail=1; }
+[[ "$(bash "$RESOLVE" "u:p@dev.example.com.:8443")" == "acc_dev" ]] && echo "ok: ポート付きでも末尾ドットを無視" || { echo "NG: ポート付き末尾ドット"; fail=1; }
 # 既存キーは保持する
 tmp="$(mktemp)"; jq '.other = 1' "$COADMAP_STATE_FILE" > "$tmp"; mv "$tmp" "$COADMAP_STATE_FILE"
-bash "$SAVE" "acc_456" "me@example.com" "Me"
-jq -e '.other == 1 and .identity.accountId == "acc_456"' "$COADMAP_STATE_FILE" >/dev/null && echo "ok: 既存キー保持" || { echo "NG: 既存キー消失"; fail=1; }
+bash "$SAVE" coadmap.com "acc_456" "me@example.com" "Me"
+jq -e '.other == 1 and .identities["coadmap.com"].accountId == "acc_456" and .identities["dev.example.com:8443"].accountId == "acc_dev"' "$COADMAP_STATE_FILE" >/dev/null && echo "ok: 既存キー保持" || { echo "NG: 既存キー消失"; fail=1; }
+# 旧形式(単一の .identity)は coadmap.com のものとして読み、他ホストには使わない
+echo '{"identity":{"accountId":"acc_legacy","email":"old@example.com","displayName":"Old"}}' > "$COADMAP_STATE_FILE"
+[[ "$(bash "$RESOLVE" coadmap.com)" == "acc_legacy" ]] && echo "ok: 旧形式を coadmap.com として読む" || { echo "NG: 旧形式"; fail=1; }
+out="$(bash "$RESOLVE" dev.example.com || echo "rc=$?")"
+[[ "$out" == "rc=3" ]] && echo "ok: 旧形式は他ホストに使わない" || { echo "NG: 旧形式が他ホストに漏れた got='$out'"; fail=1; }
+bash "$SAVE" coadmap.com "acc_new" "new@example.com" "New"
+[[ "$(bash "$RESOLVE" coadmap.com)" == "acc_new" ]] && echo "ok: ホスト別の保存が旧形式より優先" || { echo "NG: 旧形式が優先された"; fail=1; }
 # 回帰: 並行書き込みでロストアップデートが起きない(ロック無しだと大半が消える)
 rm -f "$COADMAP_STATE_FILE"
 pids=()
-for i in $(seq 1 15); do bash "$SAVE" "acc_$i" "u$i@example.com" "U$i" & pids+=($!); done
+for i in $(seq 1 15); do bash "$SAVE" "host$i.example.com" "acc_$i" "u$i@example.com" "U$i" & pids+=($!); done
 for p in "${pids[@]}"; do wait "$p" || true; done
-jq -e '.identity.accountId | test("^acc_[0-9]+$")' "$COADMAP_STATE_FILE" >/dev/null && echo "ok: 並行保存後も JSON が壊れない" || { echo "NG: 並行保存で破損"; fail=1; }
+cnt="$(jq '.identities | length' "$COADMAP_STATE_FILE")"
+[[ "$cnt" == "15" ]] && echo "ok: 並行 15 ホストすべて保持" || { echo "NG: 並行保存でロストアップデート cnt=$cnt"; fail=1; }
 rm -rf "$TMP"
 
 # save-pipeline-roles: プロジェクト設定 .coadmap/workflow.json に書き、既存キーを保持し、並行でも消えない

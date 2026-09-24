@@ -1,6 +1,6 @@
 # プロジェクト設定 `.coadmap/workflow.json`
 
-skill が「リポ固有の作法」を推測しないで済むように、利用者側のリポに置く設定ファイル。**すべて任意**で、無ければ skill は必要になった項目をその都度ユーザーに確認し、承認のうえでこのファイルに書き残す(learn & remember)。チームで共有する事実(パイプラインロール、対象リポ、ポート env など)はここに置き、コミットして共有する。
+skill が「リポ固有の作法」を推測しないで済むように、利用者側のリポに置く設定ファイル。**すべて任意**で、無ければ skill は必要になった項目をその都度ユーザーに確認し、承認のうえでこのファイルに書き残す(learn & remember)。チームで共有する事実(パイプラインロール、対象リポ、ポート env など)はここに置く。タスクの PR には含めず、コミットして共有するのはユーザーに頼まれた時だけ、タスクとは別に行う。
 
 置き場所は作業リポの直下 `.coadmap/workflow.json`。skill は cwd から親方向に探索するので、モノレポやサブディレクトリからでも見つかる。環境変数 `COADMAP_WORKFLOW_CONFIG` でパスを明示することもできる。
 
@@ -67,7 +67,7 @@ skill が「リポ固有の作法」を推測しないで済むように、利�
 
 | パス | 用途 | 上書き用の環境変数 |
 |---|---|---|
-| `task-flow.json` | 本人アカウント(`identity`) | `COADMAP_STATE_FILE` |
+| `task-flow.json` | 本人アカウント(接続先ホストごとの `identities`。旧形式の単一 `identity` は `coadmap.com` として読む) | `COADMAP_STATE_FILE` |
 | `task-flow.json.lock` | 上記の書き込みロック(mkdir ロック、1 分で stale 回収) | 同上 |
 | `port-registry.json` | 並行 worktree のポート割当。キーは `<branch>:<base>` | `COADMAP_PORT_REGISTRY` |
 | `port-registry.json.lock` | 上記の書き込みロック | 同上 |
