@@ -13,10 +13,11 @@ skill 本体(`skills/coadmap-task-workflow/`)はクライアント非依存の�
 |---|---|---|
 | skill の読み込み | plugin 経由で `skills/` を読み込む | `.codex-plugin/plugin.json` の `skills` で読み込む |
 | slash command(`/coadmap-task`) | あり | 無し。`CMDEV-1234 に着手して` のようにタスク ID を含めて依頼すると、UserPromptSubmit hook が skill 利用を促す |
+| PR 作成前のタスクリンク検査 | `gh pr create` / `gh pr new` と MCP の `*__create_pull_request` を検査する | `gh pr create` / `gh pr new` を検査する。MCP の `*__create_pull_request` も同じ設定で配線しているが、発火は未確認(次回の Codex E2E で確認する) |
 | サブエージェント(PR レビュー担当) | `coadmap-pr-reviewer` agent を spawn する | plugin は agent を同梱しない。skill が `references/review-checklist.md` の観点で inline レビューする |
 | タスク管理ツール | TodoWrite | plan / update_plan。どちらも無ければ応答内のチェックリストで代替する |
 | hooks 設定ファイル + パス変数 | `hooks/hooks.json`、`${CLAUDE_PLUGIN_ROOT}` | `hooks/codex-hooks.json`、`${PLUGIN_ROOT}` |
-| hooks の信頼 | インストールで有効になる(信頼・レビューの手順なしで、次の新規セッションから UserPromptSubmit / PreToolUse の発火を確認済み)。plugin の変更は新しいセッションから反映される | 信頼(レビュー)するまで 4 つとも黙ってスキップされる([codex.md](codex.md#hooks-の信頼)) |
+| hooks の信頼 | インストールで有効になる(信頼・レビューの手順なしで、次の新規セッションから UserPromptSubmit / PreToolUse の発火を確認済み)。plugin の変更は新しいセッションから反映される | 信頼(レビュー)するまで hook はどれも黙ってスキップされる([codex.md](codex.md#hooks-の信頼)) |
 | サンドボックスの影響(`git push` / `gh`) | デスクトップアプリの既定設定では、SSH の `git push` と `gh pr create` が追加の承認なしで成功した。サンドボックスを有効にした構成は未検証 | 既定のサンドボックス内で認証エラーになることがある。サンドボックス外での実行を承認する([codex.md](codex.md#サンドボックスと-git-push--gh)) |
 | クライアント管理の worktree | デスクトップアプリはセッションを `<repo>/.claude/worktrees/<name>` の worktree(ブランチ `claude/<name>`)で開始できる | アプリがセッション用 worktree を用意する(detached HEAD、`codex/` prefix) |
 | MCP の登録 | `claude mcp add`([claude-code.md](claude-code.md#coadmap-mcp-の接続)) | `~/.codex/config.toml` の `[mcp_servers.<name>]`([codex.md](codex.md#coadmap-mcp-の接続)) |
@@ -29,7 +30,7 @@ skill 本体(`skills/coadmap-task-workflow/`)はクライアント非依存の�
 
 ## hooks の配線
 
-UserPromptSubmit / PreToolUse / SessionEnd / Stop は両者とも同じイベント名・同じ stdin JSON(`session_id` / `prompt` / `tool_input.command` / `transcript_path`)・同じブロック方法(exit 2)を採用している。PreToolUse の matcher もシェルは `Bash`、`tool_input.command` は Codex 公式ドキュメントに明記されている。
+UserPromptSubmit / PreToolUse / SessionEnd / Stop は両者とも同じイベント名・同じ stdin JSON(`session_id` / `prompt` / `tool_input.command` / `transcript_path`)・同じブロック方法(exit 2)を採用している。PreToolUse の matcher もシェルは `Bash`、`tool_input.command` は Codex 公式ドキュメントに明記されている。matcher はどちらも正規表現として解釈され、MCP ツールは `tool_name` に `mcp__<サーバー名>__<ツール名>` で渡るので、MCP 経由の PR 作成は `^mcp__.+__create_pull_request$` の別エントリで同じ guard に配線している(本文は `tool_input.body`)。matcher と入力形式は両クライアントの公式ドキュメントの記述に基づく。Codex で MCP ツールに対してこの matcher が発火するかは実機では未確認で、次回の Codex E2E で確認する。
 
 usage report は両クライアントとも `SessionEnd` と `Stop` の両方に配線し、`SessionEnd` 側には `--event SessionEnd` を明示引数で渡す。stdin に `hook_event_name` が乗らない実装でもイベント名が分かるようにするためで、クライアント種別はイベント名ではなく transcript の中身(Claude Code 形式か Codex の rollout log か)で判定する。`Stop` は毎ターン発火するが、impl は前回送信値より増えた時だけ送るので多重計上にはならない。
 

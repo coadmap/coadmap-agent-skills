@@ -4,8 +4,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUT="$HERE/../guard-pr-task-link.sh"
 TMP="$(mktemp -d)"; export COADMAP_RUN_DIR="$TMP/run"
 fail=0
-# PreToolUse(Bash) hook JSON を stdin で渡す
-payload() { jq -nc --arg s "$1" --arg c "$2" '{session_id:$s, tool_input:{command:$c}}'; }
+# PreToolUse(Bash) hook JSON を stdin で渡す。長い本文は jq の引数に載せると Linux の 1 引数あたりの
+# 上限(128KB)を超えるので、組み込みの printf から stdin で渡す。
+payload() { printf '%s' "$2" | jq -Rsc --arg s "$1" '{session_id:$s, tool_input:{command:.}}'; }
 mark() { mkdir -p "$COADMAP_RUN_DIR"; : > "$COADMAP_RUN_DIR/$1.injected"; }
 run() { payload "$1" "$2" | bash "$SUT" 2>/dev/null; }
 run_capture_stderr() { payload "$1" "$2" | bash "$SUT" 2>"$3"; }
@@ -31,17 +32,17 @@ rc=0; run s1 'gh pr create --title "fix" --body "no link"' || rc=$?
 run s1 'gh pr create --title t --body "[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)"' \
   && echo "ok: タスクURL有りは通過" || { echo "NG: タスクURL有りでブロック"; fail=1; }
 # /tasks/ 直下形式のURLも通過
-run s1 'gh pr create -b "see https://coadmap.com/tasks/abc"' \
+run s1 'gh pr create -b "see https://coadmap.com/tasks/VGFzazoxMjM="' \
   && echo "ok: tasks直下URLも通過" || { echo "NG: tasks直下URLでブロック"; fail=1; }
 # 無関係な coadmap.com URL はブロック（タスクURLに限る）
 rc=0; run s1 'gh pr create --body "see https://coadmap.com/pricing"' || rc=$?
 [[ $rc -eq 2 ]] && echo "ok: 非タスクURLはブロック" || { echo "NG: 非タスクURLが通過 rc=$rc"; fail=1; }
 # --body-file 内にタスクURL → 通過
-printf 'top\n[[CMDEV-2] y](https://coadmap.com/ws/tasks/Zm9v)\n' > "$TMP/body.md"
+printf 'top\n[[CMDEV-2] y](https://coadmap.com/ws/tasks/VGFzazoy)\n' > "$TMP/body.md"
 run s1 "gh pr create --body-file $TMP/body.md" \
   && echo "ok: body-file内URLで通過" || { echo "NG: body-fileが見られていない"; fail=1; }
 # 引用符付きの空白入りパスも1引数として読み取る
-printf '[[CMDEV-2] y](https://coadmap.com/ws/tasks/Zm9v)\n' > "$TMP/body with spaces.md"
+printf '[[CMDEV-2] y](https://coadmap.com/ws/tasks/VGFzazoy)\n' > "$TMP/body with spaces.md"
 run s1 "gh pr create --body-file \"$TMP/body with spaces.md\"" \
   && echo "ok: 空白入りbody-file内URLで通過" || { echo "NG: 空白入りbody-fileが見られていない"; fail=1; }
 # hook 実行時点で解決できないシェル変数のパスは誤ブロックせず、警告で区別する
@@ -160,11 +161,11 @@ expect_blocked "--repo 付き gh pr create はブロック" 'gh --repo acme/widg
 expect_blocked "-R 付き gh pr create はブロック" 'gh -R acme/widget pr create --body "no link"'
 # 1 コマンド列に複数の gh pr create があれば全件検査する
 expect_blocked "2 つ目のリンク無し gh pr create はブロック" \
-  'gh pr create --body "https://coadmap.com/ws/tasks/a1" && gh pr create --body "no link"'
+  'gh pr create --body "https://coadmap.com/ws/tasks/VGFzazox" && gh pr create --body "no link"'
 # URL 判定: ホスト境界と ID 非空
 expect_blocked "偽ドメインの URL はブロック" 'gh pr create --body "https://evilcoadmap.com/ws/tasks/x"'
 expect_blocked "ID 無しの /tasks/ URL はブロック" 'gh pr create --body "https://coadmap.com/tasks/"'
-run s1 'gh pr create --body "https://app.coadmap.com/ws/tasks/abc"' \
+run s1 'gh pr create --body "https://app.coadmap.com/ws/tasks/VGFzazoxMjM="' \
   && echo "ok: サブドメインの URL は通過" || { echo "NG: サブドメイン URL を誤ブロック"; fail=1; }
 # export では効かない(実装は gh 直前の代入語だけ認める)ことを固定する
 rc=0; run s1 'export COADMAP_PR_NO_TASK=1; gh pr create --body "no link"' || rc=$?
@@ -175,4 +176,149 @@ run s1 'gh pr view 12 --json body' \
 # マーカー無しセッション → 対象外
 run s9 'gh pr create --body "no link"' \
   && echo "ok: 非タスクセッションは通過" || { echo "NG: 非タスクセッションをブロック"; fail=1; }
+expect_passed() {
+  local label="$1" command="$2" rc=0
+  run s1 "$command" || rc=$?
+  if [[ $rc -eq 0 ]]; then
+    echo "ok: $label"
+  else
+    echo "NG: $label rc=$rc"
+    fail=1
+  fi
+}
+LINK='https://coadmap.com/ws/tasks/VGFzazoxMjM='
+printf '[[CMDEV-3] z](%s)\n' "$LINK" > "$TMP/linked.md"
+# gh pr new は gh pr create の公式エイリアス
+expect_blocked "gh pr new はブロック" 'gh pr new --title t --body "no link"'
+expect_passed "リンク付き gh pr new は通過" "gh pr new --body '$LINK'"
+# gh の前に置くラッパーコマンドとそのオプションを読み飛ばす
+expect_blocked "timeout 経由はブロック" "timeout 120 gh pr create --body 'no link'"
+expect_blocked "timeout -k 経由はブロック" "timeout -k 5 120 gh pr create --body 'no link'"
+expect_blocked "nice 経由はブロック" "nice -n 5 gh pr create --body 'no link'"
+expect_blocked "xargs 経由はブロック" "echo x | xargs -n 1 gh pr create --body 'no link'"
+expect_blocked "env -u 経由はブロック" "env -u X gh pr create --body 'no link'"
+expect_blocked "command -p 経由はブロック" "command -p gh pr create --body 'no link'"
+expect_blocked "time -p 経由はブロック" "time -p gh pr create --body 'no link'"
+expect_blocked "stdbuf 経由はブロック" "stdbuf -o L gh pr create --body 'no link'"
+expect_blocked "{ } グループ内はブロック" "{ gh pr create --body 'no link'; }"
+expect_passed "env 経由の COADMAP_PR_NO_TASK=1 はバイパス" "env COADMAP_PR_NO_TASK=1 gh pr create --body 'no link'"
+# シェルの -c は他の引数の後ろにあっても文字列実行として扱う
+expect_blocked "bash --login -c 経由はブロック" 'bash --login -c "gh pr create --body \"no link\""'
+expect_blocked "bash -e -c 経由はブロック" 'bash -e -c "gh pr create --body \"no link\""'
+expect_blocked "sh -lc 経由はブロック" "sh -lc 'gh pr create --body x'"
+expect_blocked "シェルに渡す heredoc 内はブロック" $'bash <<\'EOF\'\ngh pr create --fill\nEOF'
+# コマンド置換の中身は実際に実行されるので、同じ規則で検査する
+# shellcheck disable=SC2016 # hook に展開前の文字列を渡す回帰テスト
+expect_blocked "\$() 内のリンク無しはブロック" 'url=$(gh pr create --body "no link")'
+expect_passed "\$() 内でも body-file にリンクがあれば通過" "url=\$(gh pr create --body-file $TMP/linked.md)"
+# --body "$(cat <path>)" は --body-file <path> と同じ扱い
+expect_passed "--body \"\$(cat file)\" のリンクで通過" "gh pr create --body \"\$(cat $TMP/linked.md)\""
+expect_passed "--body \"\$(< file)\" のリンクで通過" "gh pr create --body \"\$(< $TMP/linked.md)\""
+expect_passed "引用符付きパスの \$(cat) も読む" "gh pr create --body \"\$(cat \"$TMP/body with spaces.md\")\""
+expect_blocked "\$(cat file) の中身にリンクが無ければブロック" "gh pr create --body \"\$(cat $TMP/body-without-link.md)\""
+warning="$TMP/unresolved-cat.log"
+# shellcheck disable=SC2016 # hook に展開前の変数文字列を渡す回帰テスト
+unresolved_cmd='gh pr create --body "$(cat "$SCRATCH/pr.md")"'
+rc=0; run_capture_stderr s1 "$unresolved_cmd" "$warning" || rc=$?
+if [[ $rc -eq 0 ]] && grep -q '本文ファイルを読み取れないため、ブロックせず続行します' "$warning"; then
+  echo "ok: 読めない \$(cat) は body-file と同じく警告して通過"
+else
+  echo "NG: 読めない \$(cat) の扱いが body-file と異なる rc=$rc"
+  fail=1
+fi
+# 引用符内の文字列は構文として扱わない
+expect_passed "--title の単引用符内バックティックは無視" "gh pr create --title 'fix \`foo\` bug' --body-file $TMP/linked.md"
+expect_passed "--title の引用符内 sh -c は無視" "gh pr create --title \"use sh -c here\" --body-file $TMP/linked.md"
+# heredoc の本文はコマンドではない
+expect_passed "ファイルに書く heredoc 内の gh pr create は無視" $'cat > notes.md <<\'EOF\'\ngh pr create --fill\nEOF'
+expect_passed "<<- heredoc の後ろのコマンドも正しく読む" $'cat > notes.md <<-EOF\n\tgh pr create --fill\n\tEOF\necho done'
+expect_blocked "heredoc の後ろの gh pr create は検査する" $'cat > notes.md <<\'EOF\'\nmemo\nEOF\ngh pr create --body "no link"'
+expect_blocked "引用しない heredoc 内のコマンド置換は検査する" $'cat > notes.md <<EOF\n$(gh pr create --body "no link")\nEOF'
+# URL 判定: 別 URL のクエリへの埋め込みと、ID として短すぎるものは認めない
+expect_blocked "別 URL のクエリに埋め込んだリンクはブロック" "gh pr create --body 'https://evil.example/?u=$LINK'"
+expect_blocked "短すぎる ID はブロック" "gh pr create --body 'https://coadmap.com/ws/tasks/x'"
+expect_passed "ポート付き URL は通過" "gh pr create --body 'https://coadmap.com:443/ws/tasks/VGFzazoxMjM='"
+expect_blocked "未設定ホストはブロック" "gh pr create --body 'https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM='"
+# taskHosts で許可したホストは通る(設定はセッションの cwd から探す)
+mkdir -p "$TMP/repo/.coadmap"
+echo '{"taskHosts":["coadmap.example.co.jp"]}' > "$TMP/repo/.coadmap/workflow.json"
+with_cwd() { printf '%s' "$1" | jq -Rsc --arg d "$TMP/repo" '{session_id:"s1", cwd:$d, tool_input:{command:.}}' | bash "$SUT" 2>/dev/null; }
+rc=0; with_cwd "gh pr create --body 'https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM='" || rc=$?
+[[ $rc -eq 0 ]] && echo "ok: taskHosts のホストは通過" || { echo "NG: taskHosts のホストでブロック rc=$rc"; fail=1; }
+rc=0; with_cwd "gh pr create --body 'https://other.example/ws/tasks/VGFzazoxMjM='" || rc=$?
+[[ $rc -eq 2 ]] && echo "ok: taskHosts 以外のホストはブロック" || { echo "NG: taskHosts 以外のホストが通過 rc=$rc"; fail=1; }
+# MCP の create_pull_request も body を検査する
+mcp() { printf '%s' "$3" | jq -Rsc --arg s "$1" --arg t "$2" '{session_id:$s, tool_name:$t, tool_input:{owner:"o", repo:"r", title:"t", body:.}}' | bash "$SUT" 2>/dev/null; }
+rc=0; mcp s1 mcp__github__create_pull_request 'no link' || rc=$?
+[[ $rc -eq 2 ]] && echo "ok: MCP のリンク無し PR 作成はブロック" || { echo "NG: MCP のリンク無し PR 作成が通過 rc=$rc"; fail=1; }
+mcp s1 mcp__github__create_pull_request "[[CMDEV-1] x]($LINK)" \
+  && echo "ok: MCP のリンク付き PR 作成は通過" || { echo "NG: MCP のリンク付き PR 作成をブロック"; fail=1; }
+mcp s9 mcp__github__create_pull_request 'no link' \
+  && echo "ok: MCP も非タスクセッションは対象外" || { echo "NG: MCP の非タスクセッションをブロック"; fail=1; }
+mcp s1 mcp__github__list_pull_requests '' \
+  && echo "ok: 他の MCP ツールは対象外" || { echo "NG: 他の MCP ツールをブロック"; fail=1; }
+# hooks 設定が MCP の PR 作成ツールにも配線されていること
+for f in "$HERE/../../hooks.json" "$HERE/../../codex-hooks.json"; do
+  matcher="$(jq -r '.hooks.PreToolUse[] | select(.hooks[].command | test("guard-pr-task-link")) | .matcher | select(test("create_pull_request"))' "$f")"
+  if [[ -n "$matcher" && "mcp__github__create_pull_request" =~ $matcher && ! "mcp__github__list_pull_requests" =~ $matcher ]]; then
+    echo "ok: $(basename "$f") は MCP の PR 作成を guard に配線"
+  else
+    echo "NG: $(basename "$f") に MCP の PR 作成の配線が無い"
+    fail=1
+  fi
+done
+# よく使われる --body "$(cat <<'EOF' ... EOF)" 形式は本文を heredoc から読む
+expect_passed "\$(cat <<EOF) 本文のリンクで通過" $'gh pr create --title t --body "$(cat <<\'EOF\'\n[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)\n\n## Summary\n- `code` span\nEOF\n)"'
+expect_blocked "\$(cat <<EOF) 本文にリンクが無ければブロック" $'gh pr create --title t --body "$(cat <<\'EOF\'\n## Summary\n- `code` span\nEOF\n)"'
+# 長い本文でもリンクを見落とさない
+long_body="[[CMDEV-1] x]($LINK)"$'\n'"$(seq 1 20000 | sed 's/^/line /')"
+rc=0; mcp s1 mcp__github__create_pull_request "$long_body" || rc=$?
+[[ $rc -eq 0 ]] && echo "ok: 長い本文でもリンクで通過" || { echo "NG: 長い本文でリンクを見落とし rc=$rc"; fail=1; }
+# $() 内の heredoc 本文の括弧・引用符で置換の終わりを見誤らない
+expect_passed "heredoc 本文の閉じ括弧で置換を打ち切らない" $'gh pr create --body "$(cat <<\'EOF\'\n[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)\n1) it\'s done :)\nEOF\n)" && echo "gh pr create" > /dev/null'
+expect_blocked "heredoc 本文の引用符で後ろの gh pr create を見失わない" $'gh pr view --json body -q "$(cat <<\'EOF\'\nit\'s a note\nEOF\n)"; gh pr create --body "no link"'
+# ラベル直後や括弧で囲んだタスクリンクも認める(区切りとして ":" "@" "+" を許す)
+expect_passed "Label:URL 形式は通過" "gh pr create --body 'Task:$LINK'"
+expect_passed "**Label**:URL 形式は通過" "gh pr create --body '**Task**:$LINK'"
+expect_passed "(URL) 形式は通過" "gh pr create --body 'see ($LINK)'"
+expect_passed "<URL> 形式は通過" "gh pr create --body 'see <$LINK>'"
+# ホスト名は大文字小文字を区別しない
+expect_passed "大文字混じりのホストは通過" "gh pr create --body 'https://Coadmap.com/ws/tasks/VGFzazoxMjM='"
+# ANSI-C quoting の \' で字句解析を崩さない
+expect_passed "\$'...' 内の \\' を含む本文のリンクで通過" "gh pr create --body \$'It\\'s done\\n\\n[x]($LINK)'"
+expect_blocked "\$'...' の後ろの gh pr create も検査する" "echo \$'it\\'s'; gh pr create --body 'no link'"
+# --body-file - に付いた heredoc は本文として読む
+expect_passed "--body-file - の heredoc 本文のリンクで通過" $'gh pr create --body-file - <<\'EOF\'\n[[CMDEV-1] x](https://coadmap.com/ws/tasks/VGFzazoxMjM=)\nEOF'
+expect_blocked "--body-file - の heredoc 本文にリンクが無ければブロック" $'gh pr create --body-file - <<\'EOF\'\nno link\nEOF'
+warning="$TMP/heredoc-expansion.log"
+# shellcheck disable=SC2016 # hook に展開前の変数文字列を渡す回帰テスト
+unresolved_cmd=$'gh pr create --body-file - <<EOF\n$TASK_LINE\nEOF'
+rc=0; run_capture_stderr s1 "$unresolved_cmd" "$warning" || rc=$?
+if [[ $rc -eq 0 ]] && grep -q 'heredoc が展開を含み読み取れないため' "$warning"; then
+  echo "ok: 展開を含む heredoc 本文は警告して通過"
+else
+  echo "NG: 展開を含む heredoc 本文の扱いが不正 rc=$rc"
+  fail=1
+fi
+# ヘルプ表示は PR を作らない
+expect_passed "gh pr create --help は対象外" "gh pr create --help"
+expect_passed "gh pr create -h は対象外" "gh pr create -h"
+# 長い本文でも hook の時間切れより十分早く終わる(字句解析が二乗の時間にならない)
+long_inline="[[CMDEV-1] x]($LINK)"$'\n'"$(seq 1 6000 | sed 's/^/line of text /')"
+for quote in single double heredoc; do
+  case $quote in
+    single) long_cmd="gh pr create --title t --body '$long_inline'" ;;
+    double) long_cmd="gh pr create --title t --body \"$long_inline\"" ;;
+    heredoc) long_cmd="gh pr create --title t --body \"\$(cat <<'EOF'"$'\n'"$long_inline"$'\n'"EOF"$'\n'")\"" ;;
+  esac
+  start=$SECONDS
+  rc=0; run s1 "$long_cmd" || rc=$?
+  elapsed=$((SECONDS - start))
+  if [[ $rc -eq 0 && $elapsed -le 10 ]]; then
+    echo "ok: ${#long_inline} バイトの本文($quote)を ${elapsed}s で検査"
+  else
+    echo "NG: 長い本文($quote)の検査 rc=$rc ${elapsed}s"
+    fail=1
+  fi
+done
 rm -rf "$TMP"; exit $fail

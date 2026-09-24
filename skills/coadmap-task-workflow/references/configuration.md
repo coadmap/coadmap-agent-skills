@@ -12,6 +12,7 @@ skill が「リポ固有の作法」を推測しないで済むように、利�
   "worktreeDir": ".worktrees",
   "qualityGate": ["npm run lint", "npm run typecheck", "npm test"],
   "reviewGuidelines": "docs/review-guidelines.md",
+  "taskHosts": ["coadmap.example.co.jp"],
   "pipelineRoles": {
     "<workspaceId>": { "DOING": "<pipelineId>", "IN_REVIEW": "<pipelineId>", "DONE": "<pipelineId>" }
   },
@@ -46,6 +47,7 @@ skill が「リポ固有の作法」を推測しないで済むように、利�
 | `worktreeDir` | `.worktrees` | 各リポ直下からの worktree 置き場(相対パス) |
 | `qualityGate[]` | なし | PR 作成前と CI 失敗時にローカルで回すコマンド |
 | `reviewGuidelines` | なし | レビュー時に参照するリポ固有の観点ファイル |
+| `taskHosts[]` | なし(`coadmap.com` のみ) | `coadmap.com` 以外で Coadmap を使う場合のタスク URL のホスト(サブドメインも含む)。タスク URL の検出と、PR body のタスクリンク検査(hook・レビュー)が `coadmap.com` に加えて受け入れる。許可リストにしているのは、任意ホストの `/tasks/` を認めるとそれらしい URL を書くだけで検査を通せてしまうため。hooks はセッションの cwd から設定を探すので、複数リポを扱うセッションで `cd ../other-repo && gh pr create` としても、使われるのはセッション開始時の cwd 側の設定 |
 | `pipelineRoles[<workspaceId>]` | MCP から自動判別 | DOING / IN_REVIEW / DONE に対応する `pipelineId`。自動判別できない場合に `save-pipeline-roles.sh` が書く |
 | `repos[].name` | 必須 | 識別名 |
 | `repos[].path` | 必須 | ローカルパス。先頭の `~` は skill 側で `$HOME` に展開する(シェルは展開しない) |
@@ -54,6 +56,10 @@ skill が「リポ固有の作法」を推測しないで済むように、利�
 | `repos[].postSetup[]` | なし | worktree 作成直後に worktree 直下で実行するコマンド |
 | `repos[].docker.up` / `down` | なし | 起動・停止コマンド(実行はユーザー承認後) |
 | `repos[].docker.healthcheck` | なし | 起動後の疎通確認コマンド。`$<env>` を参照するので、ポート割当後に export しておく |
+
+## タスク ID の検出で拾わない接頭辞
+
+プロンプトやブランチ名からのタスク ID 検出は、`UTF-8` / `SHA-256` / `ISO-8601` / `RFC-7231` / `CP-932` / `GPT-4` のような規格名・文字コード名・モデル名を拾わないよう、これらの接頭辞を除外している。namespace がこれらと同名の場合(例 `CP`、`GPT`)、文中の `CP-12` は検出されない。`[CP-12] タイトル` のような角括弧付きの表記か、タスク URL で指定する。
 
 ## 状態ファイル(自動生成、ユーザー単位)
 
