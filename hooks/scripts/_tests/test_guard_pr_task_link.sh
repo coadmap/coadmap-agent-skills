@@ -4,8 +4,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUT="$HERE/../guard-pr-task-link.sh"
 TMP="$(mktemp -d)"; export COADMAP_RUN_DIR="$TMP/run"
 fail=0
-# PreToolUse(Bash) hook JSON を stdin で渡す
-payload() { jq -nc --arg s "$1" --arg c "$2" '{session_id:$s, tool_input:{command:$c}}'; }
+# PreToolUse(Bash) hook JSON を stdin で渡す。長い本文は jq の引数に載せると Linux の 1 引数あたりの
+# 上限(128KB)を超えるので、組み込みの printf から stdin で渡す。
+payload() { printf '%s' "$2" | jq -Rsc --arg s "$1" '{session_id:$s, tool_input:{command:.}}'; }
 mark() { mkdir -p "$COADMAP_RUN_DIR"; : > "$COADMAP_RUN_DIR/$1.injected"; }
 run() { payload "$1" "$2" | bash "$SUT" 2>/dev/null; }
 run_capture_stderr() { payload "$1" "$2" | bash "$SUT" 2>"$3"; }
@@ -241,13 +242,13 @@ expect_blocked "未設定ホストはブロック" "gh pr create --body 'https:/
 # taskHosts で許可したホストは通る(設定はセッションの cwd から探す)
 mkdir -p "$TMP/repo/.coadmap"
 echo '{"taskHosts":["coadmap.example.co.jp"]}' > "$TMP/repo/.coadmap/workflow.json"
-with_cwd() { jq -nc --arg c "$1" --arg d "$TMP/repo" '{session_id:"s1", cwd:$d, tool_input:{command:$c}}' | bash "$SUT" 2>/dev/null; }
+with_cwd() { printf '%s' "$1" | jq -Rsc --arg d "$TMP/repo" '{session_id:"s1", cwd:$d, tool_input:{command:.}}' | bash "$SUT" 2>/dev/null; }
 rc=0; with_cwd "gh pr create --body 'https://coadmap.example.co.jp/ws/tasks/VGFzazoxMjM='" || rc=$?
 [[ $rc -eq 0 ]] && echo "ok: taskHosts のホストは通過" || { echo "NG: taskHosts のホストでブロック rc=$rc"; fail=1; }
 rc=0; with_cwd "gh pr create --body 'https://other.example/ws/tasks/VGFzazoxMjM='" || rc=$?
 [[ $rc -eq 2 ]] && echo "ok: taskHosts 以外のホストはブロック" || { echo "NG: taskHosts 以外のホストが通過 rc=$rc"; fail=1; }
 # MCP の create_pull_request も body を検査する
-mcp() { jq -nc --arg s "$1" --arg t "$2" --arg b "$3" '{session_id:$s, tool_name:$t, tool_input:{owner:"o", repo:"r", title:"t", body:$b}}' | bash "$SUT" 2>/dev/null; }
+mcp() { printf '%s' "$3" | jq -Rsc --arg s "$1" --arg t "$2" '{session_id:$s, tool_name:$t, tool_input:{owner:"o", repo:"r", title:"t", body:.}}' | bash "$SUT" 2>/dev/null; }
 rc=0; mcp s1 mcp__github__create_pull_request 'no link' || rc=$?
 [[ $rc -eq 2 ]] && echo "ok: MCP のリンク無し PR 作成はブロック" || { echo "NG: MCP のリンク無し PR 作成が通過 rc=$rc"; fail=1; }
 mcp s1 mcp__github__create_pull_request "[[CMDEV-1] x]($LINK)" \
