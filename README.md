@@ -110,3 +110,5 @@ CI は ubuntu と macOS の両方で回る。skill やドキュメントを書�
 ## ライセンス
 
 MIT
+
+<!-- CMDEV-11277: coadmap-task-workflow E2E 検証用のダミー追記（マージしない） -->
