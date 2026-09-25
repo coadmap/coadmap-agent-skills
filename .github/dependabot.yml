@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # workflow の Action は SHA で固定しているので、更新は Dependabot の PR で追う
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
