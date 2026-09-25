@@ -4,7 +4,7 @@
 
 - バグ報告・要望は Issue で受け付ける。脆弱性は Issue に書かず [SECURITY.md](SECURITY.md) の手順で報告する。
 - 大きな変更は、PR の前に Issue で方向性をすり合わせる。
-- PR は fork から出す。外部からの PR の CI はメンテナが承認してから走り、マージには CODEOWNERS のレビューが必要。
+- 外部からの PR は fork から出す。その CI はメンテナが承認してから走り、マージには CODEOWNERS のレビューが必要。
 - PR には変更の理由と、下記の test / lint を通したことを書く。
 
 ## 開発
