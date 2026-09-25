@@ -1,5 +1,12 @@
 # Contributing
 
+## Issue と Pull Request
+
+- バグ報告・要望は Issue で受け付ける。脆弱性は Issue に書かず [SECURITY.md](SECURITY.md) の手順で報告する。
+- 大きな変更は、PR の前に Issue で方向性をすり合わせる。
+- PR は fork から出す。外部からの PR の CI はメンテナが承認してから走り、マージには CODEOWNERS のレビューが必要。
+- PR には変更の理由と、下記の test / lint を通したことを書く。
+
 ## 開発
 
 ```bash
@@ -14,7 +21,7 @@ bash scripts/lint.sh   # shellcheck + manifest JSON + hook 配線 + Markdown リ
 - **skill 本体(`skills/coadmap-task-workflow/` の SKILL.md と references)は能力の条件で分岐を書く。** 例: 「サブエージェントを使えるなら〜、使えなければ〜」「サンドボックス内で認証エラーが出たら〜」「クライアントが worktree を用意済みなら〜」。クライアント名は括弧内の例としてだけ出し、「Codex では〜」のような製品名での分岐は書かない。
 - **クライアント固有の事情は `docs/clients/` に置く。** インストール手順、MCP 登録方法、hooks の有効化・信頼、サンドボックスのエラー文言、設定ファイルのパスなど。README はクライアント共通の説明に留め、そこからリンクする。
 - skill 配下は単体コピーでも動くよう自己完結させる(`scripts/lint.sh` が skill 外へのリンクを検出する)。skill から `docs/clients/` へはリンクしない。
-- 説明には「なぜそうするか」のうち自明でないものだけを書く。タスク ID や変更経緯は本文に書かず、コミットメッセージと CHANGELOG に書く。
+- 説明には「なぜそうするか」のうち自明でないものだけを書く。タスク ID や変更経緯は本文に書かず、コミットメッセージに書く。
 
 ## クライアントを追加する
 
