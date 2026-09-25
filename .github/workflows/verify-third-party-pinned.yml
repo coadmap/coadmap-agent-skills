@@ -1,0 +1,10 @@
+# 検証用(マージしない)
+name: verify-third-party-pinned
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820 # v3.0.0
