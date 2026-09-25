@@ -1,6 +1,6 @@
 {
   "name": "coadmap-task-workflow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Coadmap タスクの着手から PR・レビュー・CI・マージ準備・DONE・後片付けまでのライフサイクルを AI コーディングエージェントに徹底させる skill / hooks。",
   "author": {
     "name": "coadmap",
