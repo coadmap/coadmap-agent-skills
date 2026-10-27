@@ -63,3 +63,5 @@ update_coadmap_task(
 - **subagent が無い環境(Codex など)**: 自分で `gh pr diff <pr>` を読み、review-checklist.md の観点で **実装した時とは別の立場**からレビューし、同じ返却フォーマットで結果をまとめる。
 
 レビュー結果のうち **must-fix(対応必須)** は **このセッションで対応**し、修正内容を示して承認を得てから再 push する。nit は任意。verdict が needs-changes の間はマージ準備に進まない。
+
+draft で作ってレビュー後に ready にするリポでは、CI の判定は ready にした後の run で行う。draft の間に skip されたジョブは成功扱いで表示されるため、draft のまま、または ready 直後の `skipping` を見て「CI 緑」と判断しない(→ 05)。
