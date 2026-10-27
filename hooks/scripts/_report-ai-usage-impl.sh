@@ -550,17 +550,22 @@ reclaim_stale_lock() {
 # 2 プロセスが同時に stale と判定した場合に、片方が相手の取り立ての lock を消す。
 # $1: lock ディレクトリ, $2: 取得できたら代入するグローバル変数名。
 # 取得と変数代入の間に窓を作らない (窓があるとその間に落ちた lock が回収されるまで残る)。
+# uutils coreutils (Ubuntu 26.04 以降の既定) の mkdir は、同じディレクトリを同時に作ると
+# 複数のプロセスに成功を返す。mkdir だけでは排他にならないので、所有の確定は noclobber
+# (O_EXCL) での pid ファイル作成で行う。
+claim_lock_dir() {
+  mkdir "$1" 2>/dev/null && (set -C; printf '%s' "$$" >"$1/pid") 2>/dev/null
+}
+
 acquire_lock() {
   local d="$1" var="$2"
-  if mkdir "$d" 2>/dev/null; then
+  if claim_lock_dir "$d"; then
     printf -v "$var" '%s' "$d"
-    printf '%s' "$$" >"$d/pid" 2>/dev/null || true
     return 0
   fi
   reclaim_stale_lock "$d" || return 1
-  mkdir "$d" 2>/dev/null || return 1
+  claim_lock_dir "$d" || return 1
   printf -v "$var" '%s' "$d"
-  printf '%s' "$$" >"$d/pid" 2>/dev/null || true
   return 0
 }
 
