@@ -32,7 +32,7 @@ lookup_coadmap_reference(
 
 - 応答の `body` が手順の本文(SKILL.md 形式の Markdown)。`files` に補助ファイルがあれば、`path` を指定してその本文を引く
 - `sources` は、この手順を採用したナレッジの出典(元のタスク・Note・引用・時刻)。手順の背景を知りたいときに読む
-- `validity.status` が `archived`、または `validity.knowledge[]` の `state` が `retired` なら、その手順は組織がもう使っていない。従わず、下の「食い違いを残す」でその旨をコメントに書く
+- `validity.status` が `archived`、または `validity.knowledge[]` に `state` が `adopted` の行が 1 つも無い(すべて `retired`)なら、その手順は組織がもう使っていない。従わず、下の「食い違いを残す」でその旨をコメントに書く。同じ手順を複数の行が採用していることがあり、`retired` の行が混ざっていても `adopted` の行が残っていれば使われている
 - 404 は、無い・読めない・公開されていないのどれか。取り直しても変わらないので、その手順なしで進め、引けなかったことをコメントに残す
 
 ## 従ったあと
