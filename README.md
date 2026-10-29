@@ -2,7 +2,7 @@
 
 [Coadmap](https://coadmap.com) を使う開発チーム向けの、AI コーディングエージェント用 skills / plugin。
 
-現在は **`coadmap-task-workflow`** の 1 plugin を収録。Claude Code と Codex に対応(クライアントごとの差分は [docs/clients/](docs/clients/README.md))。
+現在は **`coadmap-task-workflow`** の 1 plugin(skill は `coadmap-task-workflow` と `coadmap-reference-lookup` の 2 つ)を収録。Claude Code と Codex に対応(クライアントごとの差分は [docs/clients/](docs/clients/README.md))。
 
 ## coadmap-task-workflow
 
@@ -27,6 +27,7 @@ Coadmap のタスク(`[CMDEV-9618] タイトル` / `CMDEV-9618` / タスク URL)
 | 種別 | 名前 | 役割 | 使えないクライアントでの代替 |
 |---|---|---|---|
 | skill | `coadmap-task-workflow` | ライフサイクル全体のオーケストレーター(references で段階的に読む) | - |
+| skill | `coadmap-reference-lookup` | タスク取得の応答に載る手順の索引行から、作業前に `lookup_coadmap_reference` で手順の本文を引き、食い違いをタスクのコメントに残す | 索引行の text ブロックに書かれた引き方に従う |
 | command | `/coadmap-task [TASK_ID\|URL]` | 明示的な着手エントリポイント | タスク ID を含めて依頼する |
 | agent | `coadmap-pr-reviewer` | PR の独立レビュー担当 | skill が inline でレビュー |
 | hook | UserPromptSubmit | プロンプトにタスク ID/URL を検出したら skill 利用を促す(セッション 1 回) | - |

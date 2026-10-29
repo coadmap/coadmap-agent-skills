@@ -35,6 +35,10 @@ create_coadmap_task_comment(
 **反映先**: <該当 PR / ファイル / 後続タスク など>
 ```
 
+## 手順の索引行が届いたとき
+
+00 のタスク取得の応答に手順の索引行(`procedureIndex`。`- \`coadmap/release-check\`: いつ引くか` の形)が載っていたら、その場面の作業に入る前に `lookup_coadmap_reference` で本文を引き、従った手順のキーを PR 本文かコメントに書く。手順と実態が違ったときも、この章のコメントとして残す。引き方と食い違いの書き方は skill `coadmap-reference-lookup` が持つ(同じ plugin に同梱。無いクライアントでは索引行の text ブロックに書かれた引き方に従う)。
+
 ## 注意
 
 - **秘匿情報(トークン・API キー・パスワード等)はコメントに含めない**。
