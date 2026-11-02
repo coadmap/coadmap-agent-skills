@@ -55,6 +55,18 @@ update_coadmap_task(
 )
 ```
 
+### 2-1. 未決の属性をまとめて確定する
+
+IN_REVIEW への移動の応答に `attributeCheck` が返ったら、閉じる前に 1 回だけ、属性(機能・見積りなど)をまとめてユーザーに確かめる。返らなければ(MCP が古い・未決も空きも無い)何もしない。Yata の候補は判断の材料で、決めるのはユーザー。
+
+1. `attributeCheck.openDecisions` の件ごとに、推奨(`candidates` の `rank` が最小のもの。`summary` が人が読む一文)を並べる。`missingTopics` は「値も候補も無い属性」として並べる。
+2. 作業で分かったことが推奨と食い違うとき(変えたファイルが属する機能が違う、など)は、その根拠を添えて別の候補を勧める。
+3. 「この内容で確定してよいか」を 1 回だけ聞く。属性ごとに何度も聞かない。
+4. ユーザーが同意した件は `confirm_coadmap_task_decision(decisionRecordId = 件の id, expectedVersion = 件の version, selectedChangeSetIds = [選んだ候補の changeSetId])` で確定する。「やらない」と言われた件は `outcome = not_doing`。
+   - 候補に無い値をユーザーが選んだ、または `missingTopics` の値をユーザーが決めたときは、`update_coadmap_task` でその属性を直接書く(開いた件は自動で閉じる)。
+   - 版が古いと返ったら(409)、`get_coadmap_task_dependency` で読み直して `openDecisions` の版を取り直し、選び直す。
+5. 見積りがすでにあるタスクの見積りを、実績に合わせて書き換えない(ベロシティが計画の精度を表さなくなる)。
+
 ## 3. レビュー
 
 レビューの観点は [review-checklist.md](review-checklist.md) に集約してある。実行方法は環境で選ぶ:

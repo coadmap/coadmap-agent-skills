@@ -34,6 +34,7 @@ CFG="$(bash "<skill dir>/scripts/read-config.sh")"
    - 絞った候補ごとに `get_coadmap_workspace_context(workspaceId)` を呼び、`pipelines` に `identity.workspacePipelineId` を含むものを対象 workspace とする。
    - 該当が 0 個または 2 個以上ならユーザーに確認する。workspace のタイトルやタスク ID の接頭辞から推測しない。
 3. 対象 workspace の context(**pipelines / members / sprints / estimateValues / labels / epics / releases**)を以降のフェーズで使う。
+4. 1 の応答に `openDecisions`(Yata が出した、タスクの属性 = 機能・見積りなどの未決の候補)が 1 件以上あれば、件数と属性を控えておく。ここでは確定しない。作業で分かることを根拠に足せるので、PR を出した後にまとめて確かめる([04 の 2-1](04-pr-and-review.md#2-1-未決の属性をまとめて確定する))。
 
 ## 4. 本人アカウントの解決(learn & remember)
 
@@ -65,4 +66,4 @@ bash "<skill dir>/scripts/resolve-identity.sh" "<host>"   # 例: coadmap.com
 
 ## 6. 結果の要約
 
-タスク(ID・タイトル・URL)、ワークスペース、パイプラインロール、本人アカウント、読み込んだプロジェクト設定をユーザーに一度要約してから次フェーズへ進む。
+タスク(ID・タイトル・URL)、ワークスペース、パイプラインロール、本人アカウント、読み込んだプロジェクト設定をユーザーに一度要約してから次フェーズへ進む。未決の属性の候補(3-4)があれば、その件数と「PR を出した後にまとめて確認する」ことも添える。
