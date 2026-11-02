@@ -57,15 +57,21 @@ update_coadmap_task(
 
 ### 2-1. 未決の属性をまとめて確定する
 
-IN_REVIEW への移動の応答に `attributeCheck` が返ったら、閉じる前に 1 回だけ、属性(機能・見積りなど)をまとめてユーザーに確かめる。返らなければ(MCP が古い・未決も空きも無い)何もしない。Yata の候補は判断の材料で、決めるのはユーザー。
+Coadmap の AI(Yata)は、タスクの属性(機能・見積りなど)の候補を出すことがある。決めるのはユーザーで、候補は判断の材料。
 
-1. `attributeCheck.openDecisions` の件ごとに、推奨(`candidates` の `rank` が最小のもの。`summary` が人が読む一文)を並べる。`missingTopics` は「値も候補も無い属性」として並べる。
+IN_REVIEW への移動の応答に「Before closing: check the task's attributes」の節があれば、閉じる前に 1 回だけ、属性をまとめてユーザーに確かめる。節が無ければ(MCP が古い・未決も空きも無い)何もしない。節の中身は応答の文として返り、JSON には入らない。
+
+1. 節の `## Item N` ごとに、推奨(`(recommended)` が付いた候補。`summary` が人が読む一文)を並べる。「Empty attributes with no suggestion」に並ぶ属性は「値も候補も無い属性」として並べる。
+   - 候補が「none yet」の件は、まだ候補が無いので確定しない(DONE へ動かすときに拾い直す)。
+   - 「viewerCanConfirm: false」の件は確定しない。確定できる人に頼むようユーザーに伝える。
 2. 作業で分かったことが推奨と食い違うとき(変えたファイルが属する機能が違う、など)は、その根拠を添えて別の候補を勧める。
-3. 「この内容で確定してよいか」を 1 回だけ聞く。属性ごとに何度も聞かない。
-4. ユーザーが同意した件は `confirm_coadmap_task_decision(decisionRecordId = 件の id, expectedVersion = 件の version, selectedChangeSetIds = [選んだ候補の changeSetId])` で確定する。「やらない」と言われた件は `outcome = not_doing`。
-   - 候補に無い値をユーザーが選んだ、または `missingTopics` の値をユーザーが決めたときは、`update_coadmap_task` でその属性を直接書く(開いた件は自動で閉じる)。
-   - 版が古いと返ったら(409)、`get_coadmap_task_dependency` で読み直して `openDecisions` の版を取り直し、選び直す。
-5. 見積りがすでにあるタスクの見積りを、実績に合わせて書き換えない(ベロシティが計画の精度を表さなくなる)。
+3. 「この内容で確定してよいか」を 1 回だけ聞く。属性ごとに何度も聞かない。確定は取り消せない操作であることも伝える。「保留」も答えとして受け、その件は確定しない。
+4. ユーザーが同意した件は `confirm_coadmap_task_decision(decisionRecordId = 件の decisionRecordId, expectedVersion = 件の expectedVersion, selectedChangeSetIds = [選んだ候補の changeSetId])` で確定する。
+   - 「やらない」と言われた件は、`selectedChangeSetIds` の代わりに `outcome = not_doing` を渡す。
+   - 「status: confirmed earlier without a selected candidate」の件を「反映しない」で閉じるときは `withoutChange = true` を渡す。
+   - 候補に無い値をユーザーが選んだ、または空きの属性の値をユーザーが決めたときは、示した値への同意を得てから `update_coadmap_task` でその属性を直接書く(開いた件は自動で閉じる)。
+   - 版が古い・件が閉じていると返ったら(409)、`get_coadmap_task_dependency` で読み直す。同意した候補(同じ changeSetId)が残っていて中身も変わっていなければ、新しい expectedVersion で確定し直す。候補が変わっていたら、ユーザーに確かめ直す。件が消えていて属性が空いたままなら、ユーザーに値を聞いて `update_coadmap_task` で書く。
+5. 見積りがすでにあるタスクの見積りを、実績に合わせて書き換えない(ベロシティが計画の精度を表さなくなる)。ユーザーが明示的に頼んだときだけ書き換える。
 
 ## 3. レビュー
 
