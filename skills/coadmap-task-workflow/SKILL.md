@@ -24,7 +24,7 @@ Coadmap タスクの着手から完了・後片付けまでのライフサイク
 - [ ] 2. DOING へ移動 + アサイン/見積もり/スプリント確認・設定 → [references/01-start-doing.md](references/01-start-doing.md)
 - [ ] 3. worktree 作成 + Docker/PORT 構成 → [references/02-worktree-setup.md](references/02-worktree-setup.md)
 - [ ] 4. 作業中: 意思決定・仕様詳細化をタスクコメント投稿 → [references/03-progress-comments.md](references/03-progress-comments.md)
-- [ ] 5. PR 作成(body 1行目にタスクリンク + 作成後に body を読み戻して検証) + IN_REVIEW 移動 → [references/04-pr-and-review.md](references/04-pr-and-review.md)
+- [ ] 5. PR 作成(body 1行目にタスクリンク + 作成後に body を読み戻して検証) + IN_REVIEW 移動 + 未決の属性(機能・見積りなど)をまとめて確定 → [references/04-pr-and-review.md](references/04-pr-and-review.md)
 - [ ] 6. レビュー + 指摘対応 → [references/04-pr-and-review.md](references/04-pr-and-review.md)
 - [ ] 7. CI ステータス確認 → [references/05-ci-check.md](references/05-ci-check.md)
 - [ ] 8. マージ準備をユーザー通知 → [references/06-merge-and-cleanup.md](references/06-merge-and-cleanup.md)
