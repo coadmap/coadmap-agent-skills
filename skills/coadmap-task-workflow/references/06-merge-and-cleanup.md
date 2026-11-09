@@ -19,7 +19,7 @@ update_coadmap_task(
 )
 ```
 
-DONE への移動の応答に「Before closing: check the task's attributes」の節があれば、IN_REVIEW の後に増えた件(2-1 で Yata が判断中だった件・属性など)と、ユーザーが「後で」と答えた件だけを、[04 の 2-1](04-pr-and-review.md#2-1-未決の属性をまとめて確定する) と同じ手順で 1 回だけ確かめる。2-1 で答えをもらった件は、`decisionRecordId` で突き合わせて聞き直さない。
+DONE への移動の応答に「Before closing: check the task's attributes」の節があれば、IN_REVIEW の後に増えた件(2-1 で Yata が判断中だった件・属性、「合う機能がない」で頼み直した件など)と、ユーザーが「後で」と答えた件だけを、[04 の 2-1](04-pr-and-review.md#2-1-未決の属性をまとめて確定する) と同じ手順で 1 回だけ確かめる。2-1 で答えをもらった件は、`decisionRecordId` で突き合わせて聞き直さない。
 
 ## 3. クリーンアップ(継続タスクが無く、かつユーザーが会話で指示した後)
 

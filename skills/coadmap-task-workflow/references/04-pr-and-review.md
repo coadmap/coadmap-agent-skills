@@ -63,6 +63,7 @@ IN_REVIEW への移動の応答に「Before closing: check the task's attributes
 
 1. 節の `## Item N` ごとに、推奨(`(recommended)` が付いた候補。`summary` が人が読む一文)を並べる。「Empty attributes with no suggestion」に並ぶ属性は「値も候補も無い属性」として並べる。
    - 候補が「none yet」の件と、「Attributes Yata is still deciding」に並ぶ属性は、Yata が判断中。確定せず、ユーザーに値を聞かず、直接も書かない(Yata の判断とぶつかるため)。DONE へ動かすときに拾い直す。
+   - 候補が無く確認の問いがある機能の紐付けの件(「candidates: none. Yata is not deciding」と書かれる)は、Yata の判断中ではなくユーザーの番。問いをユーザーに見せ、機能を選んでもらう(問いに文章で答える口は無い)。選んだ機能は、同意を得てから `update_coadmap_task` で直接紐付ける(ユーザーが件を確定できる人なら件は閉じる)。合う機能が無ければ、同意を得てから `request_coadmap_task_attribute_suggestions(topics = ["pf_link"], rejectCurrentCandidates = true, requestNewFeature = true)` で Yata に新しい機能の案を頼み、DONE へ動かすときに拾い直す。
    - 「viewerCanConfirm: false」の件は確定しない。件の行に書かれた理由(社外の人・タスクを更新できない・保留中など)と次の一手をユーザーに伝える。
 2. 作業で分かったことが推奨と食い違うとき(変えたファイルが属する機能が違う、など)は、その根拠を添えて別の候補を勧める。
 3. 「この内容で確定してよいか」を 1 回だけ聞く。属性ごとに何度も聞かない。候補を選んで確定するとタスクが書き換わることも伝える。「後で」も答えとして受け、その件は確定しない。
