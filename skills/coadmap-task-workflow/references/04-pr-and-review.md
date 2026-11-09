@@ -69,7 +69,7 @@ IN_REVIEW への移動の応答に「Before closing: check the task's attributes
 4. ユーザーが同意した件は `confirm_coadmap_task_decision(decisionRecordId = 件の decisionRecordId, expectedVersion = 件の expectedVersion, selectedChangeSetIds = [選んだ候補の changeSetId])` で確定する。
    - 「やらない」と言われた件は、`selectedChangeSetIds` の代わりに `outcome = not_doing` を渡す。
    - 「status: confirmed earlier without a selected candidate」の件を「反映しない」で閉じるときは `withoutChange = true` を渡す。
-   - 候補に無い値をユーザーが選んだ、または空きの属性の値をユーザーが決めたときは、示した値への同意を得てから `update_coadmap_task` でその属性を直接書く(開いた件は自動で閉じる)。
+   - 候補に無い値をユーザーが選んだ、または空きの属性の値をユーザーが決めたときは、示した値への同意を得てから `update_coadmap_task` でその属性を直接書く。ユーザーが件を確定できる人(タスクを更新できる社内のプロジェクトメンバーで、判断する人がいればその人)なら、直接書けばその属性の開いた件は閉じる(その件の候補でない変更案をユーザーが承認して値が入ったときも同じ)。そうでなければ件は開いたまま残るので、確定できる人に伝えるようユーザーに添える。
    - 確定が 409 で返ったら、応答の案内に従う。版が古いときは `get_coadmap_task_dependency` で読み直し、同意した候補(同じ changeSetId)が残っていて中身も変わっていなければ、新しい expectedVersion で確定し直す。候補が変わっていたら、ユーザーに確かめ直す。件が閉じていた・状態のために確定できないときは、読み直して属性が空いたままなら、ユーザーに値を決めてもらって `update_coadmap_task` で書く(値が入っていれば何もしない)。
 5. 見積りがすでにあるタスクの見積りを、実績に合わせて書き換えない(ベロシティが計画の精度を表さなくなる)。ユーザーが明示的に頼んだときだけ書き換える。
 
