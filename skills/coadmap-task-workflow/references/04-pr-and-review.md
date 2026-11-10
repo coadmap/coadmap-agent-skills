@@ -55,6 +55,25 @@ update_coadmap_task(
 )
 ```
 
+### 2-1. 未決の属性をまとめて確定する
+
+Coadmap の AI(Yata)は、タスクの属性(機能・見積りなど)の候補を出すことがある。決めるのはユーザーで、候補は判断の材料。
+
+IN_REVIEW への移動の応答に「Before closing: check the task's attributes」の節があれば、閉じる前に 1 回だけ、属性をまとめてユーザーに確かめる。節が無ければ(MCP が古い・未決も空きも無い)何もしない。節の中身は応答の文として返り、JSON には入らない。
+
+1. 節の `## Item N` ごとに、推奨(`(recommended)` が付いた候補。`summary` が人が読む一文)を並べる。「Empty attributes with no suggestion」に並ぶ属性は「値も候補も無い属性」として並べる。
+   - 候補が「none yet」の件と、「Attributes Yata is still deciding」に並ぶ属性は、Yata が判断中。確定せず、ユーザーに値を聞かず、直接も書かない(Yata の判断とぶつかるため)。DONE へ動かすときに拾い直す。
+   - 候補が無く確認の問いがある機能の紐付けの件(「candidates: none. Yata is waiting for the user's answer」と書かれる)は、Yata の判断中ではなくユーザーの番。問いをユーザーに見せ、機能を選んでもらう(問いに文章で答える口は無い)。選んだ機能は、同意を得てから `update_coadmap_task` で直接紐付ける(ユーザーが件を確定できる人なら件は閉じる)。合う機能が無ければ、同意を得てから `request_coadmap_task_attribute_suggestions(topics = ["pf_link"], rejectCurrentCandidates = true, requestNewFeature = true)` で Yata に新しい機能の案を頼み、DONE へ動かすときに拾い直す。頼むのは、この件でまだ `requestNewFeature` を頼んでいないときだけ(依頼は「他の候補を出す」と件ごとの回数の枠を共有し、AI クレジットも使う)。DONE で拾い直したときも同じ問いだけの件のままなら、Yata は新しい機能の案を出せなかったので、もう一度頼まずに機能を選んでもらう。
+   - 「viewerCanConfirm: false」の件は確定しない。件の行に書かれた理由(社外の人・タスクを更新できない・保留中など)と次の一手をユーザーに伝える。
+2. 作業で分かったことが推奨と食い違うとき(変えたファイルが属する機能が違う、など)は、その根拠を添えて別の候補を勧める。
+3. 「この内容で確定してよいか」を 1 回だけ聞く。属性ごとに何度も聞かない。候補を選んで確定するとタスクが書き換わることも伝える。「後で」も答えとして受け、その件は確定しない。
+4. ユーザーが同意した件は `confirm_coadmap_task_decision(decisionRecordId = 件の decisionRecordId, expectedVersion = 件の expectedVersion, selectedChangeSetIds = [選んだ候補の changeSetId])` で確定する。
+   - 「やらない」と言われた件は、`selectedChangeSetIds` の代わりに `outcome = not_doing` を渡す。
+   - 「status: confirmed earlier without a selected candidate」の件を「反映しない」で閉じるときは `withoutChange = true` を渡す。
+   - 候補に無い値をユーザーが選んだ、または空きの属性の値をユーザーが決めたときは、示した値への同意を得てから `update_coadmap_task` でその属性を直接書く。ユーザーが件を確定できる人(タスクを更新できる社内のプロジェクトメンバーで、判断する人がいればその人)なら、直接書けばその属性の開いた件は閉じる(その件の候補でない変更案をユーザーが承認して値が入ったときも同じ)。そうでなければ件は開いたまま残るので、確定できる人に伝えるようユーザーに添える。
+   - 確定が 409 で返ったら、応答の案内に従う。版が古いときは `get_coadmap_task_dependency` で読み直し、同意した候補(同じ changeSetId)が残っていて中身も変わっていなければ、新しい expectedVersion で確定し直す。候補が変わっていたら、ユーザーに確かめ直す。件が閉じていた・状態のために確定できないときは、読み直して属性が空いたままなら、ユーザーに値を決めてもらって `update_coadmap_task` で書く(値が入っていれば何もしない)。
+5. 見積りがすでにあるタスクの見積りを、実績に合わせて書き換えない(ベロシティが計画の精度を表さなくなる)。ユーザーが明示的に頼んだときだけ書き換える。
+
 ## 3. レビュー
 
 レビューの観点は [review-checklist.md](review-checklist.md) に集約してある。実行方法は環境で選ぶ:
